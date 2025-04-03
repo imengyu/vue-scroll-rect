@@ -134,8 +134,7 @@ let lastCalcScrollScrollWidth = 0;
 let lastCalcScrollScrollHeight = 0;
 let lastCalcScrollWidth = 0;
 let lastCalcScrollHeight = 0;
-
-const observer = new MutationObserver(() => calcScroll());
+let observer : MutationObserver|null = null;
  
 // 配置观察选项
 const config = { attributes: true, childList: true };
@@ -328,12 +327,16 @@ onMounted(() => {
     setTimeout(() => calcScroll(true), 200);
     calcScroll(true);
     startResizeChecker();
+    observer = new MutationObserver(() => calcScroll());
     observer.observe(container.value!, config);
   });
 });
 onBeforeUnmount(() => {
   stopResizeChecker();
-  observer.disconnect();
+  if (observer) {
+    observer.disconnect();
+    observer = null;
+  }
 });
 
 export interface ScrollRectScrollBarSlotParams {

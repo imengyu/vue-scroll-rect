@@ -34,7 +34,7 @@ export default defineConfig({
   vite: {
     plugins: [ MarkdownPreview() as any ],
     ssr: {
-      noExternal: ['@imengyu/vue3-context-menu','vue']
+      noExternal: ['@imengyu/vue3-context-menu','@highlightjs/vue-plugin','vue']
     },
     resolve: {
       alias: {
