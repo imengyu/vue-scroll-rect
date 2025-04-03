@@ -4,6 +4,10 @@
 
 只需要将组件包裹你的需要滚动内容，设置好容器大小，内容将自动允许滚动并设置滚动条（默认垂直滚动）。
 
+::: tip
+因为容器默认占满父级，因此在未设置高度的容器中，组件可能无法撑开父级，需要设置一个确定的高度。
+:::
+
 ```vue preview
 <template>
   <ScrollRect class="long-content" containerClass="content">

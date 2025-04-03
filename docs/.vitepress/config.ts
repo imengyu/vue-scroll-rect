@@ -20,6 +20,7 @@ export default defineConfig({
           { text: '开始之前', link: '/guide/index' },
           { text: '安装', link: '/guide/install' },
           { text: '如何使用', link: '/guide/useage' },
+          { text: 'API', link: '/api/index' },
         ]
       }
     ],

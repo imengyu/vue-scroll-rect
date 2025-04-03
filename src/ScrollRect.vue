@@ -107,6 +107,8 @@ const props = defineProps({
   },
 })
 
+const emit = defineEmits([ 'scroll' ])
+
 const container = ref<HTMLElement>();
 const scrollrect = ref<HTMLElement>();
 const scrollBarRefX = ref<HTMLElement>();
@@ -157,6 +159,7 @@ function calcScrollBarPosition() {
     if (sizePrecent >= 1)
       scrollBarY.show = false;
   }
+  emit('scroll', container.value.scrollLeft, container.value.scrollTop);
 }
 
 function calcScroll(force = false) {
@@ -333,6 +336,15 @@ onBeforeUnmount(() => {
   observer.disconnect();
 });
 
+export interface ScrollRectScrollBarSlotParams {
+  scrollValue: {
+    show: boolean,
+    size: number,
+    sizeRaw: number,
+    pos: number,
+  },
+  onScroll: (pec: number) => void,
+}
 export interface ScrollRectInstance {
   /**
    * Force update scrollbar state
