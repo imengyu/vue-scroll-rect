@@ -16,36 +16,49 @@
     >
       <slot />
     </div>
-    <div 
+    <slot
       v-if="scrollBarX.show"
-      ref="scrollBarRefX"
-      class="scrollbar horizontal"
-      :style="{ height: `${scrollBarSize}px` }"
-      @click="scrollbarClickScrollX"
-    >
-      <div
-        class="thumb"
-        ref="scrollBarThumbRefX"
-        :style="{ left: `${scrollBarX.pos}%`, width: `${scrollBarX.size}%` }"
-        @mousedown="thumbDrageHandlerX"
-        @wheel="mouseWheelBarX"
-      />
-    </div>
-    <div 
-      v-if="scrollBarY.show"
-      ref="scrollBarRefY"
-      class="scrollbar vertical"
-      :style="{ width: `${scrollBarSize}px` }"
-      @click="scrollbarClickScrollY"
+      name="scrollBarX"
+      :scrollBarValue="scrollBarX"
+      :onScroll="customScrollX"
     >
       <div 
-        class="thumb"
-        ref="scrollBarThumbRefY"
-        :style="{ top: `${scrollBarY.pos}%`, height: `${scrollBarY.size}%` }"
-        @mousedown="thumbDrageHandlerY"
+        ref="scrollBarRefX"
+        class="scrollbar horizontal"
+        @click="scrollbarClickScrollX"
+        @wheel="mouseWheelBarX"
+      >
+        <div
+          class="thumb"
+          ref="scrollBarThumbRefX"
+          :style="{ left: `${scrollBarX.pos}%`, width: `${scrollBarX.size}%` }"
+          @mousedown="thumbDrageHandlerX"
+          @wheel="mouseWheelBarX"
+        />
+      </div>
+    </slot>
+    <slot
+      v-if="scrollBarY.show"
+      name="scrollBarY"
+      :scrollBarValue="scrollBarY"
+      :onScroll="customScrollY"
+    >
+      <div 
+        v-if="scrollBarY.show"
+        ref="scrollBarRefY"
+        class="scrollbar vertical"
+        @click="scrollbarClickScrollY"
         @wheel="mouseWheelBarY"
-      />
-    </div>
+      >
+        <div 
+          class="thumb"
+          ref="scrollBarThumbRefY"
+          :style="{ top: `${scrollBarY.pos}%`, height: `${scrollBarY.size}%` }"
+          @mousedown="thumbDrageHandlerY"
+          @wheel="mouseWheelBarY"
+        />
+      </div>
+    </slot>
   </div>
 </template>
 
@@ -68,14 +81,6 @@ const props = defineProps({
   scroll: {
     type: String as PropType<'both'|'none'|'vertical'|'horizontal'>,
     default: 'both'
-  },
-  /**
-   * Scroll bar size (pixel)
-   * @default 8
-   */
-  scrollBarSize: {
-    type: Number,
-    default: 8
   },
   /**
    * Show scroll bar always, otherwise show scroll bar when mouse over
@@ -271,6 +276,16 @@ const thumbDrageHandlerY = createMouseDragHandler({
   },
 })
 
+function customScrollX(x: number) {
+  if (!container.value)
+    return;
+  container.value.scrollLeft = (x / 100) * (container.value.scrollWidth - container.value.offsetWidth);
+}
+function customScrollY(y: number) {
+  if (!container.value)
+    return;
+  container.value.scrollLeft = (y / 100) * (container.value.scrollHeight - container.value.offsetHeight);
+}
 function setScrollLeft(x: number) {
   if (!container.value)
     return;
@@ -367,7 +382,10 @@ defineExpose<ScrollRectInstance>({
 :root {
   --vue-scroll-rect-scrollbar-thumb-color: rgba(255,255,255, 0.3);
   --vue-scroll-rect-scrollbar-thumb-color-light: rgba(255,255,255, 0.5);
+  --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(255,255,255, 0.2);
   --vue-scroll-rect-scrollbar-thumb-radius: 5px;
+  --vue-scroll-rect-scrollbar-thumb-margin: 0px;
+  --vue-scroll-rect-scrollbar-size: 8px;
 }
 
 .vue-scroll-rect {
@@ -438,26 +456,31 @@ defineExpose<ScrollRectInstance>({
       &:hover {
         background-color: var( --vue-scroll-rect-scrollbar-thumb-color-light);
       }
+      &:active {
+        background-color: var( --vue-scroll-rect-scrollbar-thumb-color-pressed);
+      }
     }
 
     &.horizontal {
       left: 0;
       bottom: 0;
       right: 0;
+      height: var(--vue-scroll-rect-scrollbar-size);
 
       .thumb {
-        top: 0;
-        bottom: 0;
+        top: var(--vue-scroll-rect-scrollbar-thumb-margin);
+        bottom: var(--vue-scroll-rect-scrollbar-thumb-margin);
       }
     }
     &.vertical {
       top: 0;
       bottom: 0;
       right: 0;
+      width: var(--vue-scroll-rect-scrollbar-size);
 
       .thumb {
-        left: 0;
-        right: 0;
+        left: var(--vue-scroll-rect-scrollbar-thumb-margin);
+        right: var(--vue-scroll-rect-scrollbar-thumb-margin);
       }
     }
   }

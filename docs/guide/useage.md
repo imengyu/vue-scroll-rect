@@ -103,12 +103,83 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 
 ## 滚动条样式
 
+可以通过 css 修改滚动条样式颜色等等，有一些 css 变量可以用于修改滚动条样式。
 
+|名字|说明|
+|----|----|
+|--vue-scroll-rect-scrollbar-thumb-color|滚动条滑块的颜色|
+|--vue-scroll-rect-scrollbar-thumb-color-light|滚动条滑块鼠标悬浮时的颜色|
+|--vue-scroll-rect-scrollbar-thumb-color-pressed|滚动条滑块鼠标按下时的颜色|
+|--vue-scroll-rect-scrollbar-thumb-radius|滚动条滑块半径|
+|--vue-scroll-rect-scrollbar-thumb-margin|滚动条左右边距|
+|--vue-scroll-rect-scrollbar-size|滚动条宽度|
 
+```vue preview
+<template>
+  <div class="horiz-view">
+    <ScrollRect scrollBarAlwaysShow class="long-content scrollbar-style1" scroll="both">
+      <ScrollContent />
+    </ScrollRect>
+    <ScrollRect scrollBarAlwaysShow class="long-content scrollbar-style2" scroll="both">
+      <ScrollContent />
+    </ScrollRect>
+    <ScrollRect scrollBarAlwaysShow scrollBarBackgroundClickable class="long-content scrollbar-style3" scroll="both">
+      <ScrollContent />
+    </ScrollRect>
+    <ScrollRect scrollBarAlwaysShow class="long-content scrollbar-style4" scroll="both">
+      <ScrollContent />
+    </ScrollRect>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+</script>
+
+<style lang="scss">
+.scrollbar-style1 {
+  --vue-scroll-rect-scrollbar-thumb-color: rgba(162, 145, 255, 0.3);
+  --vue-scroll-rect-scrollbar-thumb-color-light: rgba(162, 145, 255, 0.5);
+  --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(162, 145, 255, 0.2);
+  --vue-scroll-rect-scrollbar-thumb-radius: 0px;
+  --vue-scroll-rect-scrollbar-size: 12px;
+}
+.scrollbar-style2 {
+  --vue-scroll-rect-scrollbar-thumb-color: rgba(162, 145, 255, 0.7);
+  --vue-scroll-rect-scrollbar-thumb-color-light: rgba(162, 145, 255, 0.9);
+  --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(162, 145, 255, 0.6);
+  --vue-scroll-rect-scrollbar-thumb-radius: 20px;
+  --vue-scroll-rect-scrollbar-size: 4px;
+}
+.scrollbar-style3 {
+  --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(255, 255, 255, 0.6);
+  --vue-scroll-rect-scrollbar-thumb-radius: 0px;
+  --vue-scroll-rect-scrollbar-size: 12px;
+
+  > .scrollbar {
+    &.horizontal {
+      border-top: 1px solid #0f0f0f;
+    }
+    &.vertical {
+      border-left: 1px solid #0f0f0f;
+    }
+  }
+}
+.scrollbar-style4 {
+  --vue-scroll-rect-scrollbar-thumb-color: rgba(0, 0, 0, 0.2);
+  --vue-scroll-rect-scrollbar-thumb-color-light: rgba(0, 0, 0, 0.5);
+  --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(0, 0, 0, 0.4);
+
+  > .scrollbar {
+    background-color: #fff;
+  }
+}
+</style>
+```
 
 ## 滚动条常显示
 
-设置 `scrollBarAlwaysShow` 属性为 `true` ，滚动条将一直显示。
+滚动条默认是在鼠标移入后渐变显示，你可以设置 `scrollBarAlwaysShow` 属性为 `true` ，滚动条将一直显示。
 
 ```vue preview
 <template>
@@ -134,4 +205,36 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 <script setup lang="ts">
 import { ScrollRect } from '@imengyu/vue-scroll-rect';
 </script>
+```
+
+## 自定义滚动条
+
+如果你希望换掉内置的滚动条，使用自己的滚动条组件，可以通过插槽 `scrollBarX` 和 `scrollBarY` 来实现。
+
+插槽会传出当前滚动条滚动位置和计算长度数据 (`scrollBarValue`)，你可以根据这个百分比来计算滚动条的显示位置；传出 `onScroll` 回调用于控制滚动。。
+
+scrollBarValue 结构如下：
+
+|名字|类型|类型|
+|----|----|----|
+|show|boolean|是否显示滚动条|
+|size|number|滚动条计算长度（百分比，0-100）|
+|sizeRaw|number|滚动条计算长度（像素）|
+|pos|number|滚动条滚动位置（百分比，0-100）|
+
+onScroll 结构如下：
+
+|参数|类型|
+|----|----|
+|pos|number|滚动条滚动位置回传（百分比，0-100）|
+
+```vue
+<template>
+  <ScrollRect class="long-content" scroll="both">
+    <ScrollContent />
+    <template #scrollBarY="{ scrollBarValue, onScroll }">
+      <MyScrollBar :value="scrollBarValue.pos" :size="scrollBarValue.size" @update:value="onScroll" />
+    </template>
+  </ScrollRect>
+</template>
 ```
