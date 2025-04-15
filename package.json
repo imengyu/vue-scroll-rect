@@ -1,16 +1,18 @@
 {
   "name": "@imengyu/vue-scroll-rect",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A scroll rect component for Vue3",
   "main": "lib/vue-scroll-rect.umd.js",
   "module": "lib/vue-scroll-rect.es.js",
   "files": [
     "lib",
-    "index.d.ts"
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://registry.npmjs.org"
   },
   "scripts": {
     "build": "vitepress build ./docs",
