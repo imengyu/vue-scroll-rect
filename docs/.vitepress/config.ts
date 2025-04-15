@@ -6,6 +6,7 @@ import MarkdownPreview from 'vite-plugin-markdown-preview'
 export default defineConfig({
   title: "Vue scroll rect",
   description: "A simple scroll rect component for vue",
+  base: '/vue-scroll-rect-docs/',
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
