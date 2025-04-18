@@ -9,5 +9,5 @@ hero:
   actions:
     - theme: brand
       text: Start
-      link: /en/guide/index
+      link: /en/guide/install
 ---

@@ -1,14 +1,23 @@
 ---
-title: Install
+title: Start
+next:
+  text: 'Usage'
+  link: '/en/guide/useage'
 ---
 
-# Install
+# Start
+
+## Introduction
+
+`vue-scroll-rect` is a custom scroll rect component based on Vue 3, which provides a container that allows custom scrollbars to be created to unify the scrollbar style of PC browsers.
+
+## Install
 
 ```shell
 npm install -save @imengyu/vue-scroll-rect
 ```
 
-## Global Import
+### Global Import
 
 ```js
 //main.js
@@ -30,7 +39,7 @@ Use:
 </scroll-rect>
 ```
 
-## Local Registration
+### Local Registration
 
 First import the style file:
 
@@ -65,7 +74,3 @@ export default defineComponent({
 });
 </script>
 ```
-
-## Usage
-
-[Usage](./useage.md)

@@ -24,6 +24,10 @@ export default defineConfig({
         ]
       }
     ],
+    footer: {
+      message: '本项目使用 MIT 开源协议',
+      copyright: 'Copyright © 2025 imengyu.top'
+    },
     socialLinks: [
       { icon: 'github', link: 'https://github.com/imengyu/vue-scroll-rect' }
     ]
@@ -46,17 +50,16 @@ export default defineConfig({
           copyright: 'Copyright © 2025 imengyu.top'
         },
         nav: [
-          { text: 'Home', link: '/' },
-          { text: 'Guide', link: '/guide/index' },
-          { text: 'API', link: '/api/index' }
+          { text: 'Home', link: '/en/' },
+          { text: 'Guide', link: '/en/guide/install' },
+          { text: 'API', link: '/en/api/index' }
         ],
         sidebar: [
           {
             text: 'Guide',
             items: [
-              { text: 'Start', link: '/guide/index' },
-              { text: 'Install', link: '/guide/install' },
-              { text: 'Usage', link: '/guide/useage' },
+              { text: 'Install', link: '/en/guide/install' },
+              { text: 'Usage', link: '/en/guide/useage' },
             ]
           }
         ],

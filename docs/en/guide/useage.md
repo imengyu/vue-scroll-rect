@@ -183,7 +183,7 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 
 ## Always show scroll bar
 
-The scrollbar defaults to a gradient display when the mouse is moved in. You can set the `scrollBarAlwaysShow` property to `true`, and the scrollbar will continue to display.
+The scrollbar defaults will fade show when the mouse is moved in. You can set the `scrollBarAlwaysShow` property to `true`, and the scrollbar will keep visible state.
 
 ```vue preview
 <template>
@@ -197,7 +197,7 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 </script>
 ```
 
-Set the `scrollBarBackgroundClickable` property to `true` nd the scrollbar background clicking area can also trigger scrolling.
+Set the `scrollBarBackgroundClickable` property to `true` and the scrollbar background clicking area can also trigger scrolling.
 
 ```vue preview
 <template>
@@ -215,7 +215,7 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 
 If you want to replace the built-in scrollbar and use your own scrollbar component, you can achieve it through the slots `scrollBarX` and `scrollBarY`.
 
-插槽会传出当前滚动条滚动位置和计算长度数据 (`scrollBarValue`)，你可以根据这个百分比来计算滚动条的显示位置；传出 `onScroll` 回调用于控制滚动。。
+The slot will transmit the current scrollbar scrolling position and calculated length data (`scrollBarValue`), and you can calculate the display position of the scrollbar based on this percentage; The `onScroll` callback is used to control scrolling..
 
 scrollBarValue struct：
 
@@ -228,7 +228,7 @@ scrollBarValue struct：
 
 Function onScroll:
 
-|Param Name|Type|
+|Param|Name|Type|
 |----|----|----|
 |pos|number|Scroll bar scrolling position callback (percentage, 0-100)|
 

@@ -1,5 +1,11 @@
 ---
 title: 安装
+next:
+  text: '开始使用'
+  link: '/guide/install'
+prev:
+  text: '开始之前'
+  link: '/guide/useage'
 ---
 
 # 安装

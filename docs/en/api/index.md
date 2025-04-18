@@ -42,7 +42,7 @@ Interface scrollBarValue:
 
 Function onScroll:
 
-|Param Name|Type|
+|Param|Name|Type|
 |----|----|----|
 |pos|number|Scroll bar scrolling position callback (percentage, 0-100)|
 
@@ -67,7 +67,7 @@ You can use `(this.$refs.myScrollBar as ScrollRectInstance)` or `const myScrollB
 
 ### `scrollToBottom(): void`
 
-  Scroll to bottom..
+  Scroll to bottom.
 
 ### `getScrollContainer(): HTMLElement | undefined`
 
