@@ -21,16 +21,47 @@ export default defineConfig({
           { text: '开始之前', link: '/guide/index' },
           { text: '安装', link: '/guide/install' },
           { text: '如何使用', link: '/guide/useage' },
-          { text: 'API', link: '/api/index' },
         ]
       }
     ],
-
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/vuejs/vitepress' }
+      { icon: 'github', link: 'https://github.com/imengyu/vue-scroll-rect' }
     ]
   },
   locales: {
+    root: {
+      label: '中文',
+      lang: 'zh',
+    },
+    en: {
+      label: 'English',
+      lang: 'en', 
+      description: 'A simple, beautiful Vue custom scroll rect component',  
+      themeConfig: {
+        socialLinks: [
+          { icon: 'github', link: 'https://github.com/imengyu/vue-scroll-rect' },
+        ],
+        footer: {
+          message: 'Released under the MIT License.',
+          copyright: 'Copyright © 2025 imengyu.top'
+        },
+        nav: [
+          { text: 'Home', link: '/' },
+          { text: 'Guide', link: '/guide/index' },
+          { text: 'API', link: '/api/index' }
+        ],
+        sidebar: [
+          {
+            text: 'Guide',
+            items: [
+              { text: 'Start', link: '/guide/index' },
+              { text: 'Install', link: '/guide/install' },
+              { text: 'Usage', link: '/guide/useage' },
+            ]
+          }
+        ],
+      }
+    },
   },
   vite: {
     plugins: [ MarkdownPreview() as any ],

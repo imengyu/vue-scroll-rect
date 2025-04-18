@@ -17,6 +17,7 @@ import IndexDemo from './IndexDemo.vue?raw';
   border-radius: 10px;
   margin-left: 50px;
   overflow: hidden;
+  text-align: left;
 
   pre {
     margin-bottom: 0;
@@ -25,6 +26,24 @@ import IndexDemo from './IndexDemo.vue?raw';
       width: max-content;
       overflow: initial;
     }
+  }
+}
+
+@media (max-width: 960px) {
+  .index-code-box {
+    margin-top: 40px;
+    width: 600px;
+    height: 300px;
+    margin-left: 0;
+    transform: translateX(-80px);
+  }
+}
+@media (max-width: 760px) {
+  .index-code-box {
+    margin-top: 20px;
+    width: 100%;
+    height: 250px;
+    transform: none;
   }
 }
 </style>

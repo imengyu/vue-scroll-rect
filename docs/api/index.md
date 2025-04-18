@@ -16,6 +16,7 @@
 | 事件名 | 描述 | 参数 |
 | :----: | :----: | :----: |
 | scroll | 容器发生滚动时触发此事件 | `scrollLeft`, `scrollTop` |
+| resized | 容器内容大小更改时触发此事件 | `scrollWidth`, `scrollHeight` |
 
 ## Slots
 
@@ -32,7 +33,7 @@
 
 scrollBarValue 结构如下：
 
-|名字|类型|类型|
+|名字|类型|说明|
 |----|----|----|
 |show|boolean|是否显示滚动条|
 |size|number|滚动条计算长度（百分比，0-100）|
@@ -41,8 +42,8 @@ scrollBarValue 结构如下：
 
 onScroll 结构如下：
 
-|参数|类型|
-|----|----|
+|参数|类型|说明|
+|----|----|----|
 |pos|number|滚动条滚动位置回传（百分比，0-100）|
 
 ## ScrollRectInstance

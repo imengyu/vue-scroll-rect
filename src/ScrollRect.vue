@@ -107,7 +107,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits([ 'scroll' ])
+const emit = defineEmits([ 'scroll', 'resized' ])
 
 const container = ref<HTMLElement>();
 const scrollrect = ref<HTMLElement>();
@@ -192,6 +192,8 @@ function calcScroll(force = false) {
   lastCalcScrollHeight = container.value.offsetHeight
   lastCalcScrollScrollWidth = container.value.scrollWidth;
   lastCalcScrollScrollHeight = container.value.scrollHeight;
+
+  emit('resized', lastCalcScrollScrollWidth, lastCalcScrollScrollHeight);
 }
 
 const manualWheelScrollSizeX = 140;
@@ -341,11 +343,27 @@ onBeforeUnmount(() => {
 
 export interface ScrollRectScrollBarSlotParams {
   scrollValue: {
+    /**
+     * Is scrollbar visible?
+     */
     show: boolean,
+    /**
+     * Scroll bar calculation length (percentage, 0-100)
+     */
     size: number,
+    /**
+     * Scroll bar calculation length (pixel)
+     */
     sizeRaw: number,
+    /**
+     * Scroll bar scrolling position (percentage, 0-100)
+     */
     pos: number,
   },
+  /**
+   * Scroll bar scrolling position callback 
+   * @param pec (percentage, 0-100)
+   */
   onScroll: (pec: number) => void,
 }
 export interface ScrollRectInstance {
