@@ -6,12 +6,21 @@
       scrollBarAlwaysShow ? 'always-show-scrollbar' : '',
       scrollBarBackgroundClickable? 'background-clickable' : '',
       isDragging ? 'dragging' : '',
-    ]" 
+    ]"
+    :style="{
+      width: width? `${width}px` : undefined,
+      height: height? `${height}px` : undefined,
+    }"
     @wheel="mouseWheel"
   >
     <div 
       ref="container" 
       :class="['scroll-content', scroll, containerClass]"
+      :style="{
+        maxWidth: maxWidth ? `${maxWidth}px` : undefined,
+        maxHeight: maxHeight ? `${maxHeight}px` : undefined,
+        ...containerStyle,
+      }"
       @scroll="calcScrollBarPosition"
     >
       <slot />
@@ -63,7 +72,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, type PropType, reactive } from "vue";
+import { ref, onMounted, onBeforeUnmount, nextTick, type PropType, reactive, computed } from "vue";
 import { createMouseDragHandler } from './Composeable/MouseHandler';
 import { useResizeChecker } from "./Composeable/ResizeChecker";
 
@@ -98,12 +107,38 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  
+  height: {
+    type: Number,
+    default: undefined,
+  },
+  width: {
+    type: Number,
+    default: undefined,
+  },
+  /**
+   * 
+   */
+  maxHeight: {
+    type: Number,
+    default: undefined,
+  },
+  maxWidth: {
+    type: Number,
+    default: undefined,
+  },
   /**
    * CSS class of inner container
    */
   containerClass: {
     type: String,
     default: ''
+  },
+  /**
+   * Container style
+   */
+  containerStyle: {
+    type: null,
   },
 })
 
@@ -116,6 +151,9 @@ const scrollBarRefY = ref<HTMLElement>();
 const scrollBarThumbRefX = ref<HTMLElement>();
 const scrollBarThumbRefY = ref<HTMLElement>();
 const isDragging = ref(false);
+
+const canScrollX = computed(() => props.scroll === 'horizontal' || props.scroll === 'both');
+const canScrollY = computed(() => props.scroll === 'vertical' || props.scroll === 'both');
   
 const scrollBarX = reactive({
   show: false,
@@ -165,10 +203,10 @@ function calcScroll(force = false) {
   
   if (!container.value) 
     return;
-  let canScrollX = props.scroll === 'horizontal' || props.scroll === 'both';
-  let canScrollY = props.scroll === 'vertical' || props.scroll === 'both';
+  let _canScrollX = canScrollX.value;
+  let _canScrollY = canScrollY.value;
 
-  const xScrollValueChanged = canScrollX && (lastCalcScrollScrollWidth !== container.value.scrollWidth
+  const xScrollValueChanged = _canScrollX && (lastCalcScrollScrollWidth !== container.value.scrollWidth
     || lastCalcScrollWidth !== container.value.offsetWidth); 
   const yScrollValueChanged = canScrollY && (lastCalcScrollScrollHeight !== container.value.scrollHeight 
     || lastCalcScrollHeight !== container.value.offsetHeight); 
@@ -179,12 +217,12 @@ function calcScroll(force = false) {
   const style = window.getComputedStyle(container.value);
 
   if (style.overflow === 'hidden' || style.overflowX === 'hidden') 
-    canScrollX = false;
+    _canScrollX = false;
   if (style.overflow === 'hidden' || style.overflowY === 'hidden') 
-    canScrollY = false;
+    _canScrollY = false;
 
-  scrollBarX.show = canScrollX;
-  scrollBarY.show = canScrollY;
+  scrollBarX.show = _canScrollX;
+  scrollBarY.show = _canScrollY;
 
   calcScrollBarPosition();
 
@@ -413,9 +451,9 @@ defineExpose<ScrollRectInstance>({
 
 <style lang="scss">
 :root {
-  --vue-scroll-rect-scrollbar-thumb-color: rgba(255,255,255, 0.3);
-  --vue-scroll-rect-scrollbar-thumb-color-light: rgba(255,255,255, 0.5);
-  --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(255,255,255, 0.2);
+  --vue-scroll-rect-scrollbar-thumb-color: rgba(122,122,122, 0.3);
+  --vue-scroll-rect-scrollbar-thumb-color-light: rgba(122, 122, 122, 0.5);
+  --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(112, 112, 112, 0.2);
   --vue-scroll-rect-scrollbar-thumb-radius: 5px;
   --vue-scroll-rect-scrollbar-thumb-margin: 0px;
   --vue-scroll-rect-scrollbar-size: 8px;
@@ -429,11 +467,9 @@ defineExpose<ScrollRectInstance>({
   overflow: hidden;
 
   > .scroll-content {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
 
     &::-webkit-scrollbar {
       width: 0;

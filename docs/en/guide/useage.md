@@ -5,7 +5,7 @@
 Just wrap the components around the content you need to scroll through, set the container size, and the content will automatically allow scrolling and set a scrollbar (default vertical scrolling).
 
 ::: tip
-Because the container defaults to fill in the parent, components may not be able to stretch the parent size in containers without a height set.
+The content expands the parent container, so when the height or maximum height is not set, the scrollbar will not appear, and a certain height needs to be set.
 :::
 
 ```vue preview
@@ -46,11 +46,72 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 .long-content {
   width: 100%;
   height: 300px;
-  color: #fff;
-  background-color: #1f1f1f;
+  color: #333;
+  background-color: #efefef;
 
   .content {
     padding: 20px;
+  }
+}
+</style>
+```
+
+### Automatically expands area and scrolling
+
+Sometimes, you may want the scrolling area to automatically expand the container when it is very small and only start scrolling when it exceeds a specified height. You can set the `maxHeight` or `maxWidth` properties,
+When the content height exceeds the set maximum value, scrolling begins.
+
+```vue preview
+<template>
+  <ScrollRect class="long-content2" containerClass="content" :maxHeight="300">
+    <button @click="add">+ Add item</button>
+    <p v-for="item in list" :key="item.id">
+      {{ item.text }}
+      <button @click="remove(item.text)">Delete</button>
+    </p> 
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+
+const list = ref<{
+  id: number,
+  text: string,
+}[]>([]);
+
+let id = 0;
+
+function add() {
+  list.value.push({ id: ++id, text: id + ' Hello, This is a simple scroll rect component for Vue3.' }); 
+}
+function remove(id: number) {
+  list.value.splice(list.value.findIndex(item => item.id === id), 1);
+}
+</script>
+
+<style lang="scss">
+.long-content2 {
+  width: 100%;
+  color: #333;
+  background-color: #efefef;
+
+  .content {
+    padding: 20px;
+  }
+  p {
+    margin: 0;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+
+    button {
+      margin-bottom: 0;
+    }
+  }
+  button {
+    margin-bottom: 10px;
+    margin-left: 10px;
   }
 }
 </style>
@@ -105,7 +166,9 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 </style>
 ```
 
-## Scroll bar style
+## Scrollbar
+
+### Scroll bar style
 
 You can modify scrollbar styles, colors, and more through CSS, and there are some CSS variables that can be used to modify scrollbar styles.
 
@@ -175,13 +238,13 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
   --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(0, 0, 0, 0.4);
 
   > .scrollbar {
-    background-color: #fff;
+    background-color: #333;
   }
 }
 </style>
 ```
 
-## Always show scroll bar
+### Always show scroll bar
 
 The scrollbar defaults will fade show when the mouse is moved in. You can set the `scrollBarAlwaysShow` property to `true`, and the scrollbar will keep visible state.
 
@@ -211,7 +274,7 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 </script>
 ```
 
-## Custom scrollbar
+### Custom scrollbar
 
 If you want to replace the built-in scrollbar and use your own scrollbar component, you can achieve it through the slots `scrollBarX` and `scrollBarY`.
 

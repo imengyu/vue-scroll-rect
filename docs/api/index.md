@@ -10,6 +10,11 @@
 | scrollBarAlwaysShow | 是否保持滚动条常显示 | `boolean` | `false` |
 | scrollBarBackgroundClickable | 是否可以点击滚动条其他区域来跳转滚动位置 | `boolean` | `false` |
 | containerClass | 内部容器的自定义类 | `string` | - |
+| containerStyle | 内部容器的自定义样式 | `object│string` | - |
+| width | 容器宽度（像素） | `number` | - |
+| height | 容器高度（像素） | `number` | - |
+| maxWidth | 滚动区域最大宽度（像素） | `number` | - |
+| maxHeight | 滚动区域最大高度（像素） | `number` | - |
 
 ## Events
 

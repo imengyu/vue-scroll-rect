@@ -5,7 +5,7 @@
 只需要将组件包裹你的需要滚动内容，设置好容器大小，内容将自动允许滚动并设置滚动条（默认垂直滚动）。
 
 ::: tip
-因为容器默认占满父级，因此在未设置高度的容器中，组件可能无法撑开父级，需要设置一个确定的高度。
+滚动容器撑开父级，因此在未设置高度或者最大高度时，不会出现滚动条，需要设置一个确定的高度。
 :::
 
 ```vue preview
@@ -46,11 +46,72 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 .long-content {
   width: 100%;
   height: 300px;
-  color: #fff;
-  background-color: #1f1f1f;
+  color: #333;
+  background-color: #efefef;
 
   .content {
     padding: 20px;
+  }
+}
+</style>
+```
+
+### 滚动区域自动撑开
+
+某些时候，你可能希望滚动区域在很小时自动撑开容器，超出指定高度时才开始滚动，则可以设置 `maxHeight` 或者 `maxWidth` 属性，
+当内容高度超出设置的最大值之后，才开始滚动。
+
+```vue preview
+<template>
+  <ScrollRect class="long-content2" containerClass="content" :maxHeight="300">
+    <button @click="add">+ Add item</button>
+    <p v-for="item in list" :key="item.id">
+      {{ item.text }}
+      <button @click="remove(item.text)">Delete</button>
+    </p> 
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+
+const list = ref<{
+  id: number,
+  text: string,
+}[]>([]);
+
+let id = 0;
+
+function add() {
+  list.value.push({ id: ++id, text: id + ' Hello, This is a simple scroll rect component for Vue3.' }); 
+}
+function remove(id: number) {
+  list.value.splice(list.value.findIndex(item => item.id === id), 1);
+}
+</script>
+
+<style lang="scss">
+.long-content2 {
+  width: 100%;
+  color: #333;
+  background-color: #efefef;
+
+  .content {
+    padding: 20px;
+  }
+  p {
+    margin: 0;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+
+    button {
+      margin-bottom: 0;
+    }
+  }
+  button {
+    margin-bottom: 10px;
+    margin-left: 10px;
   }
 }
 </style>
@@ -105,7 +166,9 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 </style>
 ```
 
-## 滚动条样式
+## 滚动条
+
+### 滚动条样式
 
 可以通过 css 修改滚动条样式颜色等等，有一些 css 变量可以用于修改滚动条样式。
 
@@ -153,7 +216,8 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
   --vue-scroll-rect-scrollbar-thumb-color-light: rgba(162, 145, 255, 0.9);
   --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(162, 145, 255, 0.6);
   --vue-scroll-rect-scrollbar-thumb-radius: 20px;
-  --vue-scroll-rect-scrollbar-size: 4px;
+  --vue-scroll-rect-scrollbar-size: 12px;
+  --vue-scroll-rect-scrollbar-thumb-margin: 4px;
 }
 .scrollbar-style3 {
   --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(255, 255, 255, 0.6);
@@ -175,13 +239,13 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
   --vue-scroll-rect-scrollbar-thumb-color-pressed: rgba(0, 0, 0, 0.4);
 
   > .scrollbar {
-    background-color: #fff;
+    background-color: #333;
   }
 }
 </style>
 ```
 
-## 滚动条常显示
+### 滚动条常显示
 
 滚动条默认是在鼠标移入后渐变显示，你可以设置 `scrollBarAlwaysShow` 属性为 `true` ，滚动条将一直显示。
 
@@ -211,7 +275,7 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 </script>
 ```
 
-## 自定义滚动条
+### 更换内置的滚动条
 
 如果你希望换掉内置的滚动条，使用自己的滚动条组件，可以通过插槽 `scrollBarX` 和 `scrollBarY` 来实现。
 

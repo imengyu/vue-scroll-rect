@@ -13,7 +13,7 @@ import IndexDemo from './IndexDemo.vue?raw';
 .index-code-box {
   height: 400px;
   width: 550px;
-  background: #1f1f1f; 
+  background: #efefef; 
   border-radius: 10px;
   margin-left: 50px;
   overflow: hidden;

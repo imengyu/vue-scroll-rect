@@ -10,6 +10,11 @@ Main component of the scroll area.
 | scrollBarAlwaysShow | Show scroll bar always, otherwise show scroll bar when mouse over | `boolean` | `false` |
 | scrollBarBackgroundClickable | Is able to click scroll bar background to set scroll position? (When `scrollBarAlwaysShow` is true) | `boolean` | `false` |
 | containerClass | CSS class of inner container | `string` | - |
+| containerStyle | Style of inner container | `object│string` | - |
+| width | Container width (pixels) | `number` | - |
+| height | Container height (pixels) | `number` | - |
+| maxWidth | Maximum width of scrolling area (pixels) | `number` | - |
+| maxHeight | Maximum height of scrolling area (pixels) | `number` | - |
 
 ## Events
 
