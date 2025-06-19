@@ -470,6 +470,9 @@ defineExpose<ScrollRectInstance>({
     position: relative;
     max-width: 100%;
     max-height: 100%;
+    
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
 
     &::-webkit-scrollbar {
       width: 0;
