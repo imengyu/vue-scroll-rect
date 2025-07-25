@@ -107,22 +107,30 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  
+  /**
+   * Height of scroll rect
+   */
   height: {
     type: Number,
     default: undefined,
   },
+  /**
+   * Width of scroll rect
+   */
   width: {
     type: Number,
     default: undefined,
   },
   /**
-   * 
+   * Max height of inner container
    */
   maxHeight: {
     type: Number,
     default: undefined,
   },
+  /**
+   * Max width of inner container
+   */
   maxWidth: {
     type: Number,
     default: undefined,
@@ -140,9 +148,25 @@ const props = defineProps({
   containerStyle: {
     type: null,
   },
+  /**
+   * Specify how many pixels of scroll distance trigger `scrollToStart` event.
+   * @default 50
+   */
+  scrollToStartThreshold: {
+    type: Number,
+    default: 50,
+  },
+  /**
+   * Specify how many pixels of scroll distance trigger `scrollToEnd` event.
+   * @default 50
+   */
+  scrollToEndThreshold: {
+    type: Number,
+    default: 50,
+  },
 })
 
-const emit = defineEmits([ 'scroll', 'resized' ])
+const emit = defineEmits([ 'scroll', 'resized', 'scrollToStart', 'scrollToEnd' ])
 
 const container = ref<HTMLElement>();
 const scrollrect = ref<HTMLElement>();
@@ -196,6 +220,27 @@ function calcScrollBarPosition() {
     if (sizePrecent >= 1)
       scrollBarY.show = false;
   }
+
+  if (props.scroll === 'vertical') {
+    if (props.scrollToStartThreshold) {
+      if (container.value.scrollTop <= props.scrollToStartThreshold)
+        emit('scrollToStart');
+    }
+    if (props.scrollToEndThreshold) {
+      if (container.value.scrollTop >= container.value.scrollHeight - props.scrollToEndThreshold)
+        emit('scrollToEnd');
+    }
+  } else if (props.scroll === 'horizontal') {
+    if (props.scrollToStartThreshold) {
+      if (container.value.scrollLeft <= props.scrollToStartThreshold)
+        emit('scrollToStart');
+    }
+    if (props.scrollToEndThreshold) {
+      if (container.value.scrollLeft >= container.value.scrollWidth - props.scrollToEndThreshold)
+        emit('scrollToEnd');
+    }
+  }
+
   emit('scroll', container.value.scrollLeft, container.value.scrollTop);
 }
 

@@ -15,13 +15,17 @@
 | height | 容器高度（像素） | `number` | - |
 | maxWidth | 滚动区域最大宽度（像素） | `number` | - |
 | maxHeight | 滚动区域最大高度（像素） | `number` | - |
+| scrollToStartThreshold | 指定滚动距离多少像素触发 `scrollToStart` 事件 | `number` | 50 |
+| scrollToEndThreshold | 指定滚动距离多少像素触发 `scrollToEnd` 事件 | `number` | 50 |
 
 ## Events
 
 | 事件名 | 描述 | 参数 |
 | :----: | :----: | :----: |
-| scroll | 容器发生滚动时触发此事件 | `scrollLeft`, `scrollTop` |
-| resized | 容器内容大小更改时触发此事件 | `scrollWidth`, `scrollHeight` |
+| scroll | 容器发生滚动时触发此事件 | `scrollLeft: number`, `scrollTop: number` |
+| resized | 容器内容大小更改时触发此事件 | `scrollWidth: number`, `scrollHeight: number` |
+| scrollToStart | 容器滚动至顶部/左部触发此事件 (仅在 `scroll` 为 `vertical` 或 `horizontal` 时触发) | - |
+| scrollToEnd | 容器滚动至底部/右部触发此事件  (仅在 `scroll` 为 `vertical` 或 `horizontal` 时触发)| - |
 
 ## Slots
 

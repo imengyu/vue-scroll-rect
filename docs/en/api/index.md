@@ -15,13 +15,17 @@ Main component of the scroll area.
 | height | Container height (pixels) | `number` | - |
 | maxWidth | Maximum width of scrolling area (pixels) | `number` | - |
 | maxHeight | Maximum height of scrolling area (pixels) | `number` | - |
+| scrollToStartThreshold | Specify how many pixels of scroll distance trigger `scrollToStart` event | `number` | 50 |
+| scrollToEndThreshold | Specify how many pixels of scroll distance trigger `scrollToEnd` event | `number` | 50 |
 
 ## Events
 
 | Name | Desc | Params |
 | :----: | :----: | :----: |
-| scroll | This event is triggered when the container scrolls. | `scrollLeft`, `scrollTop` |
-| resized | This event is triggered when the container content size changes. | `scrollWidth`, `scrollHeight` |
+| scroll | This event is triggered when the container scrolls. | `scrollLeft: number`, `scrollTop: number` |
+| resized | This event is triggered when the container content size changes. | `scrollWidth: number`, `scrollHeight: number` |
+| scrollToStart | This event is triggered when the container scrolls to the top/left. (Only triggered when `scroll` is `vertical` or `horizontal`) | - |
+| scrollToEnd | This event is triggered when the container scrolls to the bottom/right. (Only triggered when `scroll` is `vertical` or `horizontal`) | - |
 
 ## Slots
 
