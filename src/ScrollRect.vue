@@ -227,7 +227,7 @@ function calcScrollBarPosition() {
         emit('scrollToStart');
     }
     if (props.scrollToEndThreshold) {
-      if (container.value.scrollTop >= container.value.scrollHeight - props.scrollToEndThreshold)
+      if (container.value.scrollTop >= container.value.scrollHeight - props.scrollToEndThreshold - container.value.offsetHeight)
         emit('scrollToEnd');
     }
   } else if (props.scroll === 'horizontal') {
@@ -236,7 +236,7 @@ function calcScrollBarPosition() {
         emit('scrollToStart');
     }
     if (props.scrollToEndThreshold) {
-      if (container.value.scrollLeft >= container.value.scrollWidth - props.scrollToEndThreshold)
+      if (container.value.scrollLeft >= container.value.scrollWidth - props.scrollToEndThreshold - container.value.offsetWidth)
         emit('scrollToEnd');
     }
   }
