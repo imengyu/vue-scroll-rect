@@ -1,6 +1,6 @@
 {
   "name": "@imengyu/vue-scroll-rect",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A scroll rect component for Vue3",
   "main": "lib/vue-scroll-rect.umd.js",
   "module": "lib/vue-scroll-rect.es.js",
