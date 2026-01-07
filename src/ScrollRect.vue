@@ -282,8 +282,36 @@ function calcScroll(force = false) {
 const manualWheelScrollSizeX = 140;
 const manualWheelScrollSizeY = 70;
 
+//节流函数
+function throttle<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
+  let timeoutId: number | null = null;
+  let lastExecTime = 0;
+  
+  return function(this: any, ...args: Parameters<T>) {
+    const currentTime = Date.now();
+    const timeSinceLastExec = currentTime - lastExecTime;
+    
+    const remainingTime = delay - timeSinceLastExec;
+    
+    if (remainingTime <= 0) {
+      lastExecTime = currentTime;
+      func.apply(this, args);
+    } else {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      
+      timeoutId = window.setTimeout(() => {
+        lastExecTime = Date.now();
+        timeoutId = null;
+        func.apply(this, args);
+      }, remainingTime);
+    }
+  };
+}
+
 //只有横向滚动时，使鼠标可以直接滚动
-function mouseWheel(e: WheelEvent) {
+const mouseWheel = throttle<(e: WheelEvent) => void>((e: WheelEvent) => {
   if (props.scroll == 'horizontal') {
     if (e.deltaMode == 0) {
       container.value?.scrollTo({
@@ -294,8 +322,9 @@ function mouseWheel(e: WheelEvent) {
     e.preventDefault();
     e.stopPropagation();
   }
-}
-function mouseWheelBarX(e: WheelEvent) {
+}, 50);
+
+const mouseWheelBarX = throttle<(e: WheelEvent) => void>((e: WheelEvent) => {
   if (e.deltaMode == 0) {
     container.value?.scrollTo({
       left: container.value.scrollLeft + (e.deltaY > 0 ? manualWheelScrollSizeX : -manualWheelScrollSizeX),
@@ -304,8 +333,9 @@ function mouseWheelBarX(e: WheelEvent) {
     e.preventDefault();
     e.stopPropagation();
   }
-}
-function mouseWheelBarY(e: WheelEvent) {
+}, 50);
+
+const mouseWheelBarY = throttle<(e: WheelEvent) => void>((e: WheelEvent) => {
   if (e.deltaMode == 0) {
     container.value?.scrollTo({
       top: container.value.scrollTop + (e.deltaY > 0 ? manualWheelScrollSizeY : -manualWheelScrollSizeY),
@@ -314,7 +344,7 @@ function mouseWheelBarY(e: WheelEvent) {
     e.preventDefault();
     e.stopPropagation();
   }
-}
+}, 50);
 
 
 //滚动条滚动处理
