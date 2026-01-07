@@ -38,3 +38,31 @@ export function createMiniTimer(interval: number, cb: () => void) {
     },
   }
 }
+
+//节流函数
+export function throttle<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
+  let timeoutId: number | null = null;
+  let lastExecTime = 0;
+  
+  return function(this: any, ...args: Parameters<T>) {
+    const currentTime = Date.now();
+    const timeSinceLastExec = currentTime - lastExecTime;
+    
+    const remainingTime = delay - timeSinceLastExec;
+    
+    if (remainingTime <= 0) {
+      lastExecTime = currentTime;
+      func.apply(this, args);
+    } else {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      
+      timeoutId = window.setTimeout(() => {
+        lastExecTime = Date.now();
+        timeoutId = null;
+        func.apply(this, args);
+      }, remainingTime);
+    }
+  };
+}

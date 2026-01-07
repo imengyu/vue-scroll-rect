@@ -75,6 +75,7 @@
 import { ref, onMounted, onBeforeUnmount, nextTick, type PropType, reactive, computed } from "vue";
 import { createMouseDragHandler } from './Composeable/MouseHandler';
 import { useResizeChecker } from "./Composeable/ResizeChecker";
+import { throttle } from "./Composeable/MiniTimeout";
 
 const props = defineProps({	
   /**
@@ -280,71 +281,46 @@ function calcScroll(force = false) {
 }
 
 const manualWheelScrollSizeX = 140;
-const manualWheelScrollSizeY = 70;
+const manualWheelScrollSizeY = 120;
 
-//节流函数
-function throttle<T extends (...args: any[]) => any>(func: T, delay: number): (...args: Parameters<T>) => void {
-  let timeoutId: number | null = null;
-  let lastExecTime = 0;
-  
-  return function(this: any, ...args: Parameters<T>) {
-    const currentTime = Date.now();
-    const timeSinceLastExec = currentTime - lastExecTime;
-    
-    const remainingTime = delay - timeSinceLastExec;
-    
-    if (remainingTime <= 0) {
-      lastExecTime = currentTime;
-      func.apply(this, args);
-    } else {
-      if (timeoutId !== null) {
-        window.clearTimeout(timeoutId);
-      }
-      
-      timeoutId = window.setTimeout(() => {
-        lastExecTime = Date.now();
-        timeoutId = null;
-        func.apply(this, args);
-      }, remainingTime);
-    }
-  };
-}
+const whellX = throttle((postive: boolean) => {
+  container.value?.scrollTo({
+    left: container.value.scrollLeft + (postive ? manualWheelScrollSizeX : -manualWheelScrollSizeX),
+    behavior: 'smooth',
+  });
+}, 120);
+const whellY = throttle((postive: boolean) => {
+  container.value?.scrollTo({
+    top: container.value.scrollTop + (postive ? manualWheelScrollSizeY : -manualWheelScrollSizeY),
+    behavior: 'smooth',
+  });
+}, 20);
 
 //只有横向滚动时，使鼠标可以直接滚动
-const mouseWheel = throttle<(e: WheelEvent) => void>((e: WheelEvent) => {
+function mouseWheel(e: WheelEvent) {
   if (props.scroll == 'horizontal') {
-    if (e.deltaMode == 0) {
-      container.value?.scrollTo({
-        left: container.value.scrollLeft + (e.deltaY > 0 ? manualWheelScrollSizeX : -manualWheelScrollSizeX),
-        behavior: 'smooth',
-      });
-    }
+    if (e.deltaMode == 0)
+      whellX(e.deltaY > 0);
     e.preventDefault();
     e.stopPropagation();
   }
-}, 50);
+}
 
-const mouseWheelBarX = throttle<(e: WheelEvent) => void>((e: WheelEvent) => {
+function mouseWheelBarX(e: WheelEvent) {
   if (e.deltaMode == 0) {
-    container.value?.scrollTo({
-      left: container.value.scrollLeft + (e.deltaY > 0 ? manualWheelScrollSizeX : -manualWheelScrollSizeX),
-      behavior: 'smooth',
-    });
+    whellX(e.deltaY > 0);
     e.preventDefault();
     e.stopPropagation();
   }
-}, 50);
+}
 
-const mouseWheelBarY = throttle<(e: WheelEvent) => void>((e: WheelEvent) => {
+function mouseWheelBarY(e: WheelEvent) {
   if (e.deltaMode == 0) {
-    container.value?.scrollTo({
-      top: container.value.scrollTop + (e.deltaY > 0 ? manualWheelScrollSizeY : -manualWheelScrollSizeY),
-      behavior: 'smooth',
-    });
+    whellY(e.deltaY > 0);
     e.preventDefault();
     e.stopPropagation();
   }
-}, 50);
+}
 
 
 //滚动条滚动处理
