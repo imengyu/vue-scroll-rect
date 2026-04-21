@@ -289,6 +289,114 @@ async function onPullRefresh() {
 </script>
 ```
 
+## Back to top
+
+Set `enableBackToTop` to `true` to enable the back-to-top region (default button or slot). The control **only appears after the scroll offset exceeds `backToTopThreshold`**: for `vertical` / `both` use `scrollTop`, for `horizontal` / `both` use `scrollLeft`. Clicking scrolls to the origin `(0, 0)`, same as `scrollToStart()`.
+
+The default button fades and slides in with **opacity + translateY** (tunable via CSS variables). You can also call `scrollToStart()` from a template **ref**.
+
+| Prop | Description |
+|------|-------------|
+| `enableBackToTop` | Enable the back-to-top region (default button or `backToTop` slot), default `false` |
+| `backToTopThreshold` | Show the control after this offset (px); for `both`, either axis past the threshold shows it, default `120` |
+
+**`backToTop`** slot scoped props:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `onBackToTop` | `() => void` | Scrolls to the start; same as `scrollToStart` |
+| `visible` | `boolean` | Whether the control should show (same logic as the default button) |
+
+Override styling with: `--vue-scroll-rect-back-to-top-bg`, `--vue-scroll-rect-back-to-top-bg-hover`, `--vue-scroll-rect-back-to-top-color`, `--vue-scroll-rect-back-to-top-transition-duration`, `--vue-scroll-rect-back-to-top-translate-y`.
+
+```vue preview
+<template>
+  <ScrollRect
+    class="btt-demo"
+    scroll="vertical"
+    containerClass="content"
+    :enable-back-to-top="true"
+  >
+    <p class="hint">Scroll down, then use the button at the bottom-right to return to the top.</p>
+    <p v-for="n in 32" :key="n" class="row">List row {{ n }}</p>
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+</script>
+
+<style lang="scss">
+.btt-demo {
+  width: 100%;
+  height: 300px;
+  color: #333;
+  background-color: #efefef;
+
+  .content {
+    padding: 12px 20px 20px;
+  }
+  .hint {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #666;
+  }
+  .row {
+    margin: 0;
+    padding: 8px 0;
+    border-bottom: 1px solid #ddd;
+  }
+}
+</style>
+```
+
+### Custom back-to-top
+
+```vue
+<template>
+  <ScrollRect scroll="vertical" :enable-back-to-top="true" containerClass="content">
+    <template #backToTop="{ onBackToTop, visible }">
+      <button
+        type="button"
+        class="my-back-top"
+        :class="{ 'is-on': visible }"
+        @click="onBackToTop"
+      >
+        ↑ Top
+      </button>
+    </template>
+    <p v-for="n in 20" :key="n">Item {{ n }}</p>
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+</script>
+
+<style lang="scss" scoped>
+.my-back-top {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.my-back-top.is-on {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+</style>
+```
+
 ## Scrollbar
 
 ### Scroll bar style

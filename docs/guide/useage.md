@@ -213,6 +213,7 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
     @pull-to-refresh-start="onPullRefresh"
   >
     <p class="hint">在顶部向下拖动即可触发刷新（约 1.5 秒模拟请求）</p>
+    <button @click="onClick">按钮</button>
     <p v-for="n in 24" :key="n" class="row">列表行 {{ n }}</p>
   </ScrollRect>
 </template>
@@ -227,6 +228,9 @@ async function onPullRefresh() {
   loading.value = true;
   await new Promise<void>((resolve) => setTimeout(resolve, 1500));
   loading.value = false;
+}
+function onClick() {
+  console.log('click!')
 }
 </script>
 
@@ -244,6 +248,9 @@ async function onPullRefresh() {
     margin: 0 0 12px;
     font-size: 13px;
     color: #666;
+  }
+  button {
+    display: block
   }
   .row {
     margin: 0;
@@ -287,6 +294,114 @@ async function onPullRefresh() {
   loading.value = false;
 }
 </script>
+```
+
+## 返回顶部
+
+设置 `enableBackToTop` 为 `true` 后，会在滚动容器内提供**返回顶部**区域（默认按钮或插槽）。**仅当滚动偏移超过 `backToTopThreshold` 时**才显示：`vertical` / `both` 看 `scrollTop`，`horizontal` / `both` 看 `scrollLeft`。点击后将滚动位置设回起点 `(0, 0)`，等价于实例方法 `scrollToStart()`。
+
+默认按钮使用 **opacity + translateY** 渐变显隐（可通过 CSS 变量调整时长与位移）。也可通过模板 **ref** 调用 `scrollToStart()` 自行放置按钮。
+
+| 属性 | 说明 |
+|------|------|
+| `enableBackToTop` | 是否启用返回顶部区域（默认按钮或 `backToTop` 插槽），默认 `false` |
+| `backToTopThreshold` | 超过该偏移量（像素）后显示按钮；`both` 时任一轴向超过即显示，默认 `120` |
+
+插槽 **`backToTop`** 可完全自定义按钮；作用域参数：
+
+| 名字 | 类型 | 说明 |
+|------|------|------|
+| `onBackToTop` | `() => void` | 调用后滚动到起点，与 `scrollToStart` 一致 |
+| `visible` | `boolean` | 是否应显示（与默认按钮显隐逻辑一致，便于自定义动画） |
+
+默认按钮样式可通过 CSS 变量覆盖：`--vue-scroll-rect-back-to-top-bg`、`--vue-scroll-rect-back-to-top-bg-hover`、`--vue-scroll-rect-back-to-top-color`、`--vue-scroll-rect-back-to-top-transition-duration`、`--vue-scroll-rect-back-to-top-translate-y`。
+
+```vue preview
+<template>
+  <ScrollRect
+    class="btt-demo"
+    scroll="vertical"
+    containerClass="content"
+    :enable-back-to-top="true"
+  >
+    <p class="hint">向下滚动后点击右下角按钮可回到顶部</p>
+    <p v-for="n in 32" :key="n" class="row">列表行 {{ n }}</p>
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+</script>
+
+<style lang="scss">
+.btt-demo {
+  width: 100%;
+  height: 300px;
+  color: #333;
+  background-color: #efefef;
+
+  .content {
+    padding: 12px 20px 20px;
+  }
+  .hint {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #666;
+  }
+  .row {
+    margin: 0;
+    padding: 8px 0;
+    border-bottom: 1px solid #ddd;
+  }
+}
+</style>
+```
+
+### 自定义返回顶部
+
+```vue
+<template>
+  <ScrollRect scroll="vertical" :enable-back-to-top="true" containerClass="content">
+    <template #backToTop="{ onBackToTop, visible }">
+      <button
+        type="button"
+        class="my-back-top"
+        :class="{ 'is-on': visible }"
+        @click="onBackToTop"
+      >
+        ↑ Top
+      </button>
+    </template>
+    <p v-for="n in 20" :key="n">内容 {{ n }}</p>
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+</script>
+
+<style lang="scss" scoped>
+.my-back-top {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.my-back-top.is-on {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+</style>
 ```
 
 ## 滚动条

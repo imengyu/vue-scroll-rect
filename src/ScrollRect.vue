@@ -6,6 +6,7 @@
       scrollBarAlwaysShow ? 'always-show-scrollbar' : '',
       scrollBarBackgroundClickable? 'background-clickable' : '',
       isDragging ? 'dragging' : '',
+      isPulling ? 'pulling' : '',
     ]"
     :style="{
       width: width? `${width}px` : undefined,
@@ -27,6 +28,7 @@
       @pointercancel="onPullPointerUp"
       @lostpointercapture="onPullPointerLostCapture"
     >
+      <!-- 下拉刷新区域 -->
       <div
         v-if="enablePullToRefresh && canScrollY"
         class="pull-refresh-track"
@@ -54,8 +56,30 @@
           </slot>
         </div>
       </div>
+
+      <!-- 内容区域 -->
       <slot />
     </div>
+    
+    <!-- 返回顶部 -->
+    <slot
+      v-if="enableBackToTop"
+      name="backToTop"
+      :onBackToTop="instance.scrollToStart"
+      :visible="backToTopVisible"
+    >
+      <button
+        type="button"
+        class="back-to-top-button"
+        :class="{ 'is-visible': backToTopVisible }"
+        :aria-hidden="!backToTopVisible"
+        :tabindex="backToTopVisible ? 0 : -1"
+        @click="instance.scrollToStart()"
+      >
+        <IconBackToTop />
+      </button>
+    </slot>
+
     <slot
       v-if="scrollBarX.show"
       name="scrollBarX"
@@ -107,6 +131,7 @@ import { ref, onMounted, onBeforeUnmount, nextTick, watch, reactive, computed } 
 import { createMouseDragHandler } from './Composeable/MouseHandler';
 import { useResizeChecker } from "./Composeable/ResizeChecker";
 import { throttle } from "./Composeable/MiniTimeout";
+import IconBackToTop from "./Images/IconBackToTop.vue";
 
 export interface ScrollRectProps {
   /**
@@ -193,6 +218,20 @@ export interface ScrollRectProps {
    * @default 120
    */
   pullRefreshMaxDistance?: number;
+  
+  /**
+   * Enable back to top.
+   * Can use slot `backToTop` to custom back to top button.
+   * Slot props:
+   * - onBackToTop: function to scroll to start
+   * @default false
+   */
+  enableBackToTop?: boolean;
+  /**
+   * 超过该滚动偏移量（像素）后显示「返回顶部」：纵向看 `scrollTop`，横向看 `scrollLeft`（与 `scroll` 模式对应）。
+   * @default 120
+   */
+  backToTopThreshold?: number;
 }
 
 type ScrollSource = 'layout' | 'scroll';
@@ -205,6 +244,8 @@ const props = withDefaults(defineProps<ScrollRectProps>(),  {
   scrollToStartThreshold: 50,
   scrollToEndThreshold: 50,
   enablePullToRefresh: false,
+  enableBackToTop: false,
+  backToTopThreshold: 120,
   pullToRefreshThreshold: 50,
   pullToRefreshLoading: false,
   pullRefreshLoadingHeight: 48,
@@ -245,11 +286,36 @@ const scrollBarY = reactive({
   pos: 0,
 });
 
+/** 用于返回顶部显隐（与 calcScrollBarPosition 同步） */
+const scrollTopSnapshot = ref(0);
+const scrollLeftSnapshot = ref(0);
+
+const backToTopVisible = computed(() => {
+  if (!props.enableBackToTop)
+    return false;
+  const th = props.backToTopThreshold;
+  const mode = props.scroll;
+  if (mode === 'vertical')
+    return scrollTopSnapshot.value > th;
+  if (mode === 'horizontal')
+    return scrollLeftSnapshot.value > th;
+  if (mode === 'both')
+    return scrollTopSnapshot.value > th || scrollLeftSnapshot.value > th;
+  return false;
+});
+
 /** 下拉加载（顶部下拉） */
 const pullDistance = ref(0);
 const pullTrackTransition = ref(true);
 const pullActivePointerId = ref<number | null>(null);
+/** 为 true 时已确认下拉并 setPointerCapture；此前不捕获指针，避免顶部子元素无法点击 */
+const pullGestureCommitted = ref(false);
 const pullGestureStartY = ref(0);
+
+/** 纵向位移超过该值才视为下拉并捕获指针（像素） */
+const PULL_ACTIVATION_PX = 8;
+/** 未确认前向上移动超过该值则取消跟踪（视为正常滚动） */
+const PULL_CANCEL_UP_PX = 8;
 
 const pullThreshold = computed(() => props.pullToRefreshThreshold);
 const pullRefreshLoadingHeightPx = computed(() => props.pullRefreshLoadingHeight);
@@ -283,6 +349,10 @@ const pullDefaultText = computed(() => {
   }
 });
 
+const isPulling = computed(() => {
+  return pullDistance.value > 0;
+});
+
 function rubberPull(raw: number) {
   const max = props.pullRefreshMaxDistance;
   const t = Math.min(Math.max(raw, 0), max * 2);
@@ -297,13 +367,27 @@ function onPullPointerDown(e: PointerEvent) {
   if (e.pointerType === 'mouse' && e.button !== 0)
     return;
   pullActivePointerId.value = e.pointerId;
+  pullGestureCommitted.value = false;
   pullGestureStartY.value = e.clientY;
   pullTrackTransition.value = false;
-  try {
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  }
-  catch {
-    pullActivePointerId.value = null;
+}
+
+function cancelPullCandidate() {
+  if (pullActivePointerId.value === null)
+    return;
+  const id = pullActivePointerId.value;
+  const hadCapture = pullGestureCommitted.value;
+  pullActivePointerId.value = null;
+  pullGestureCommitted.value = false;
+  pullDistance.value = 0;
+  pullTrackTransition.value = true;
+  if (hadCapture && container.value) {
+    try {
+      container.value.releasePointerCapture(id);
+    }
+    catch {
+      // ignore
+    }
   }
 }
 
@@ -314,7 +398,34 @@ function onPullPointerMove(e: PointerEvent) {
     return;
   if (!container.value)
     return;
-  if (container.value.scrollTop > 1) {
+
+  if (!pullGestureCommitted.value) {
+    if (container.value.scrollTop > 0.1) {
+      cancelPullCandidate();
+      return;
+    }
+    const dyProbe = e.clientY - pullGestureStartY.value;
+    if (dyProbe < -PULL_CANCEL_UP_PX) {
+      cancelPullCandidate();
+      return;
+    }
+    if (dyProbe < PULL_ACTIVATION_PX)
+      return;
+    pullGestureCommitted.value = true;
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    }
+    catch {
+      pullGestureCommitted.value = false;
+      cancelPullCandidate();
+      return;
+    }
+    pullDistance.value = rubberPull(dyProbe * 0.55);
+    e.preventDefault();
+    return;
+  }
+
+  if (container.value.scrollTop > 0.1) {
     pullDistance.value = 0;
     endPullGesture(e, true);
     return;
@@ -322,19 +433,32 @@ function onPullPointerMove(e: PointerEvent) {
   const dy = e.clientY - pullGestureStartY.value;
   if (dy <= 0) {
     pullDistance.value = 0;
+    endPullGesture(e, true);
     return;
   }
   e.preventDefault();
   pullDistance.value = rubberPull(dy * 0.55);
 }
+function onPullPointerUp(e: PointerEvent) {
+  if (pullActivePointerId.value === null || e.pointerId !== pullActivePointerId.value)
+    return;
+  if (!pullGestureCommitted.value) {
+    cancelPullCandidate();
+    return;
+  }
+  finishPullAfterGesture(e);
+}
 
-function endPullGesture(e: PointerEvent | undefined, doRelease: boolean) {
+function endPullGesture(_e: PointerEvent | undefined, doRelease: boolean) {
   if (pullActivePointerId.value === null)
     return;
   const id = pullActivePointerId.value;
+  const hadCapture = pullGestureCommitted.value;
   pullActivePointerId.value = null;
+  pullGestureCommitted.value = false;
   pullTrackTransition.value = true;
-  if (doRelease && container.value) {
+  pullDistance.value = 0;
+  if (doRelease && hadCapture && container.value) {
     try {
       container.value.releasePointerCapture(id);
     }
@@ -344,23 +468,21 @@ function endPullGesture(e: PointerEvent | undefined, doRelease: boolean) {
   }
 }
 
-function onPullPointerUp(e: PointerEvent) {
-  if (pullActivePointerId.value === null || e.pointerId !== pullActivePointerId.value)
-    return;
-  finishPullAfterGesture(e);
-}
 
 function onPullPointerLostCapture(e: PointerEvent) {
   if (pullActivePointerId.value === null || e.pointerId !== pullActivePointerId.value)
     return;
-  finishPullAfterGesture(e);
+  if (pullGestureCommitted.value)
+    finishPullAfterGesture(e);
+  else
+    cancelPullCandidate();
 }
 
 function finishPullAfterGesture(e: PointerEvent) {
-  const wasActive = pullActivePointerId.value !== null;
+  const wasCommitted = pullGestureCommitted.value;
   const dist = pullDistance.value;
   endPullGesture(e, true);
-  if (wasActive && !props.pullToRefreshLoading && dist >= pullThreshold.value)
+  if (wasCommitted && !props.pullToRefreshLoading && dist >= pullThreshold.value)
     emit('pullToRefreshStart');
   pullDistance.value = 0;
 }
@@ -395,6 +517,7 @@ watch(
     if (!ok) {
       pullDistance.value = 0;
       pullActivePointerId.value = null;
+      pullGestureCommitted.value = false;
       nextTick(() => detachPullPointerMove());
     }
     else {
@@ -415,6 +538,8 @@ const config = { attributes: true, childList: true };
 function calcScrollBarPosition(source: ScrollSource) {
   if (!container.value) 
     return;
+  scrollTopSnapshot.value = container.value.scrollTop;
+  scrollLeftSnapshot.value = container.value.scrollLeft;
   if (scrollBarX.show) {
     const sizePrecent = (container.value.offsetWidth / container.value.scrollWidth);
     scrollBarX.sizeRaw = sizePrecent * container.value.offsetWidth;
@@ -541,6 +666,7 @@ function onMouseWheelBarY(e: WheelEvent) {
 //滚动条滚动处理
 let mouseDragDownInBarX = 0, mouseDragDownOutBarAbsX = 0;
 let mouseDragDownInBarY = 0, mouseDragDownOutBarAbsY = 0;
+let lastThumbMovedX = false, lastThumbMovedY = false;
 const thumbDrageHandlerX = createMouseDragHandler({
   onDown(e) { 
     if (!scrollBarRefX.value || !scrollBarThumbRefX.value)
@@ -548,7 +674,9 @@ const thumbDrageHandlerX = createMouseDragHandler({
     mouseDragDownInBarX = e.offsetX;
     mouseDragDownOutBarAbsX = e.x - e.offsetX - scrollBarThumbRefX.value.offsetLeft;
     e.preventDefault();
+    e.stopPropagation();
     isDragging.value = true;
+    lastThumbMovedX = false;
     return true;
   },
   onMove(downPos, movedPos, e) {
@@ -556,6 +684,7 @@ const thumbDrageHandlerX = createMouseDragHandler({
       setScrollLeft(e.x - mouseDragDownInBarX - mouseDragDownOutBarAbsX);
       e.preventDefault();
       e.stopPropagation();
+      lastThumbMovedX = true;
     }
   },
   onUp() {
@@ -569,7 +698,9 @@ const thumbDrageHandlerY = createMouseDragHandler({
     mouseDragDownInBarY = e.offsetY;
     mouseDragDownOutBarAbsY = e.y - e.offsetY - scrollBarThumbRefY.value.offsetTop;
     e.preventDefault();
+    e.stopPropagation();
     isDragging.value = true;
+    lastThumbMovedY = false;
     return true;
   },
   onMove(downPos, movedPos, e) {
@@ -577,6 +708,7 @@ const thumbDrageHandlerY = createMouseDragHandler({
       setScrollTop(e.y - mouseDragDownInBarY - mouseDragDownOutBarAbsY);
       e.preventDefault();
       e.stopPropagation();
+      lastThumbMovedY = true;
     }
   },
   onUp() {
@@ -597,6 +729,7 @@ function customScrollY(y: number) {
 function setScrollLeft(x: number) {
   if (!container.value)
     return;
+  x = Math.max(0, x);
   container.value.scrollLeft = x
         / (container.value.offsetWidth - scrollBarX.sizeRaw)
         * (container.value.scrollWidth - container.value.offsetWidth);
@@ -604,18 +737,29 @@ function setScrollLeft(x: number) {
 function setScrollTop(y: number) {
   if (!container.value)
     return;
+  y = Math.max(0, y);
   container.value.scrollTop = y
         / (container.value.offsetHeight - scrollBarY.sizeRaw)
         * (container.value.scrollHeight - container.value.offsetHeight);
 }
 
 function scrollbarClickScrollX(e: MouseEvent) {
-  if (props.scrollBarBackgroundClickable)
+  if (props.scrollBarBackgroundClickable) {
+    if (lastThumbMovedX) {
+      lastThumbMovedX = false;
+      return;
+    }
     setScrollLeft(e.offsetX - scrollBarX.sizeRaw / 2);
+  }
 }
 function scrollbarClickScrollY(e: MouseEvent) {
-  if (props.scrollBarBackgroundClickable)
+  if (props.scrollBarBackgroundClickable) {
+    if (lastThumbMovedY) {
+      lastThumbMovedY = false;
+      return;
+    }
     setScrollTop(e.offsetY - scrollBarY.sizeRaw / 2);
+  }
 }
 
 //大小更改事件
@@ -671,6 +815,17 @@ export interface ScrollRectPullRefreshSlotParams {
   loadingHeight: number;
 }
 
+export interface ScrollRectBackToTopSlotParams {
+  /**
+   * 滚动到起点 (0, 0)，与实例方法 `scrollToStart` 一致
+   */
+  onBackToTop: () => void;
+  /**
+   * 是否应显示返回控件（滚动已超过 `backToTopThreshold`，与默认按钮 `is-visible` 一致）
+   */
+  visible: boolean;
+}
+
 export interface ScrollRectScrollBarSlotParams {
   scrollValue: {
     /**
@@ -721,7 +876,7 @@ export interface ScrollRectInstance {
   scrollToEnd() : void;
 }
 
-defineExpose<ScrollRectInstance>({
+const instance : ScrollRectInstance = {
   refreshScrollState() {
     calcScroll('layout', true);
   },
@@ -737,7 +892,9 @@ defineExpose<ScrollRectInstance>({
   scrollToEnd() {
     container.value?.scrollTo(container.value.scrollWidth, container.value.scrollHeight);
   },
-})
+}
+
+defineExpose<ScrollRectInstance>(instance)
 
 </script>
 
@@ -752,6 +909,11 @@ defineExpose<ScrollRectInstance>({
   --vue-scroll-rect-pull-refresh-text-color: rgba(0, 0, 0, 0.55);
   --vue-scroll-rect-pull-refresh-font-size: 13px;
   --vue-scroll-rect-pull-refresh-spinner-color: rgba(0, 0, 0, 0.35);
+  --vue-scroll-rect-back-to-top-bg: rgba(0, 0, 0, 0.45);
+  --vue-scroll-rect-back-to-top-bg-hover: rgba(0, 0, 0, 0.58);
+  --vue-scroll-rect-back-to-top-color: #fff;
+  --vue-scroll-rect-back-to-top-transition-duration: 0.28s;
+  --vue-scroll-rect-back-to-top-translate-y: 12px;
 }
 
 .vue-scroll-rect {
@@ -830,11 +992,71 @@ defineExpose<ScrollRectInstance>({
       border-radius: 50%;
       animation: vue-scroll-rect-pull-spin 0.75s linear infinite;
     }
+
+  }
+
+  > .back-to-top-button {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 2;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--vue-scroll-rect-back-to-top-bg);
+    color: var(--vue-scroll-rect-back-to-top-color);
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate3d(0, var(--vue-scroll-rect-back-to-top-translate-y), 0);
+    pointer-events: none;
+    transition:
+      opacity var(--vue-scroll-rect-back-to-top-transition-duration) ease,
+      transform var(--vue-scroll-rect-back-to-top-transition-duration) ease,
+      visibility 0s linear var(--vue-scroll-rect-back-to-top-transition-duration);
+
+    svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    &.is-visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translate3d(0, 0, 0);
+      pointer-events: auto;
+      transition:
+        opacity var(--vue-scroll-rect-back-to-top-transition-duration) ease,
+        transform var(--vue-scroll-rect-back-to-top-transition-duration) ease,
+        visibility 0s linear 0s;
+    }
+
+    &.is-visible:hover {
+      background: var(--vue-scroll-rect-back-to-top-bg-hover);
+    }
+
+    &:not(.is-visible):hover {
+      background: var(--vue-scroll-rect-back-to-top-bg);
+    }
   }
 
   &:hover > .scrollbar {
     opacity: 1;
     transition: opacity 0.1s;
+  }
+
+  &.pulling {
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+    }
   }
 
   &.always-show-scrollbar, .dragging {
