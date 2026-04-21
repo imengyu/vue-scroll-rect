@@ -54,9 +54,7 @@
           </slot>
         </div>
       </div>
-      <div class="scroll-content-body">
-        <slot />
-      </div>
+      <slot />
     </div>
     <slot
       v-if="scrollBarX.show"
