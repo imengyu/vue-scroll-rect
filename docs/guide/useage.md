@@ -166,6 +166,129 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 </style>
 ```
 
+## 下拉刷新
+
+在滚动内容**顶部**继续向下拖动可触发刷新（指针：触摸或鼠标）。需将 `scroll` 设为 `vertical` 或 `both`；仅 `horizontal` 时不会启用。
+
+开启 `enablePullToRefresh` 后，当 `scrollTop === 0` 时下拉，松手时若下拉距离不小于 `pullToRefreshThreshold`，会触发 `pullToRefreshStart`。请使用 `v-model:pullToRefreshLoading` 表示加载中：开始刷新时设为 `true`，数据就绪后设为 `false`；从加载态结束时组件会触发 `pullToRefreshEnd`。
+
+::: tip
+在 `pullToRefreshStart` 中请 **尽快（同步）** 将 `pullToRefreshLoading` 设为 `true`，再执行异步请求，可避免顶部加载区域短暂闪烁。
+:::
+
+| 属性 | 说明 |
+|------|------|
+| `enablePullToRefresh` | 是否启用下拉刷新，默认 `false` |
+| `pullToRefreshThreshold` | 触发刷新所需的最小下拉距离（像素），默认 `50` |
+| `pullToRefreshLoading` | 是否处于加载中，支持 `v-model:pullToRefreshLoading`，默认 `false` |
+| `pullRefreshLoadingHeight` | 加载时顶部提示区域高度（像素），默认 `48` |
+| `pullRefreshMaxDistance` | 最大下拉距离与阻尼参考（像素），默认 `120` |
+
+| 事件 | 说明 |
+|------|------|
+| `pullToRefreshStart` | 达到阈值并松手，应在此处开始刷新 |
+| `pullToRefreshEnd` | `pullToRefreshLoading` 从 `true` 变为 `false` 后触发 |
+
+默认会显示「下拉加载 / 释放加载 / 加载中…」文案；可通过插槽 `pullRefresh` 完全自定义。插槽作用域参数：
+
+| 名字 | 类型 | 说明 |
+|------|------|------|
+| `state` | `'idle' \| 'pulling' \| 'release' \| 'loading'` | 当前状态 |
+| `distance` | `number` | 当前下拉距离（像素） |
+| `threshold` | `number` | 与 `pullToRefreshThreshold` 相同 |
+| `loading` | `boolean` | 与 `pullToRefreshLoading` 相同 |
+| `loadingHeight` | `number` | 与 `pullRefreshLoadingHeight` 相同 |
+
+可通过 CSS 变量调整默认样式，例如 `--vue-scroll-rect-pull-refresh-text-color`、`--vue-scroll-rect-pull-refresh-font-size`、`--vue-scroll-rect-pull-refresh-spinner-color`。
+
+```vue preview
+<template>
+  <ScrollRect
+    class="pull-demo"
+    scroll="vertical"
+    containerClass="content"
+    :enable-pull-to-refresh="true"
+    v-model:pull-to-refresh-loading="loading"
+    :pull-to-refresh-threshold="50"
+    @pull-to-refresh-start="onPullRefresh"
+  >
+    <p class="hint">在顶部向下拖动即可触发刷新（约 1.5 秒模拟请求）</p>
+    <p v-for="n in 24" :key="n" class="row">列表行 {{ n }}</p>
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+
+const loading = ref(false);
+
+async function onPullRefresh() {
+  loading.value = true;
+  await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+  loading.value = false;
+}
+</script>
+
+<style lang="scss">
+.pull-demo {
+  width: 100%;
+  height: 280px;
+  color: #333;
+  background-color: #efefef;
+
+  .content {
+    padding: 12px 20px 20px;
+  }
+  .hint {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #666;
+  }
+  .row {
+    margin: 0;
+    padding: 8px 0;
+    border-bottom: 1px solid #ddd;
+  }
+}
+</style>
+```
+
+### 自定义下拉区域
+
+```vue
+<template>
+  <ScrollRect
+    scroll="vertical"
+    :enable-pull-to-refresh="true"
+    v-model:pull-to-refresh-loading="loading"
+    @pull-to-refresh-start="onPullRefresh"
+  >
+    <template #pullRefresh="{ state, distance, threshold, loading: isLoading }">
+      <div class="my-pull">
+        <span v-if="isLoading">刷新中…</span>
+        <span v-else-if="state === 'release'">松开刷新</span>
+        <span v-else>下拉 {{ Math.round(distance) }} / {{ threshold }} px</span>
+      </div>
+    </template>
+    <p v-for="n in 10" :key="n">内容 {{ n }}</p>
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+
+const loading = ref(false);
+
+async function onPullRefresh() {
+  loading.value = true;
+  await new Promise<void>((r) => setTimeout(r, 800));
+  loading.value = false;
+}
+</script>
+```
+
 ## 滚动条
 
 ### 滚动条样式

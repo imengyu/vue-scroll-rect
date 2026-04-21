@@ -166,6 +166,129 @@ import { ScrollRect } from '@imengyu/vue-scroll-rect';
 </style>
 ```
 
+## Pull to refresh
+
+Drag down at the **top** of the scroll area to trigger a refresh (pointer: touch or mouse). Set `scroll` to `vertical` or `both`; pull-to-refresh is not available when `scroll` is `horizontal` only.
+
+With `enablePullToRefresh` enabled, when `scrollTop === 0` the user can pull down; on release, if the pull distance is at least `pullToRefreshThreshold`, `pullToRefreshStart` fires. Use `v-model:pullToRefreshLoading` for the loading state: set it to `true` when refresh starts and `false` when done; `pullToRefreshEnd` is emitted after loading finishes.
+
+::: tip
+Set `pullToRefreshLoading` to `true` **synchronously** at the beginning of the `pullToRefreshStart` handler, then run your async work, to avoid a flicker in the pull header.
+:::
+
+| Prop | Description |
+|------|-------------|
+| `enablePullToRefresh` | Enable pull-to-refresh, default `false` |
+| `pullToRefreshThreshold` | Minimum pull distance (px) to trigger refresh, default `50` |
+| `pullToRefreshLoading` | Loading flag, supports `v-model:pullToRefreshLoading`, default `false` |
+| `pullRefreshLoadingHeight` | Height (px) of the top pull area while loading, default `48` |
+| `pullRefreshMaxDistance` | Max pull distance / damping reference (px), default `120` |
+
+| Event | Description |
+|-------|-------------|
+| `pullToRefreshStart` | Fired on release past the threshold; start your refresh here |
+| `pullToRefreshEnd` | Fired when `pullToRefreshLoading` goes from `true` to `false` |
+
+By default the header shows short Chinese hints (pull / release / loading). Override completely with the `pullRefresh` slot. Scoped slot props:
+
+| Name | Type | Description |
+|------|------|-------------|
+| `state` | `'idle' \| 'pulling' \| 'release' \| 'loading'` | Current state |
+| `distance` | `number` | Current pull distance (px) |
+| `threshold` | `number` | Same as `pullToRefreshThreshold` |
+| `loading` | `boolean` | Same as `pullToRefreshLoading` |
+| `loadingHeight` | `number` | Same as `pullRefreshLoadingHeight` |
+
+You can tune the default look with CSS variables such as `--vue-scroll-rect-pull-refresh-text-color`, `--vue-scroll-rect-pull-refresh-font-size`, and `--vue-scroll-rect-pull-refresh-spinner-color`.
+
+```vue preview
+<template>
+  <ScrollRect
+    class="pull-demo"
+    scroll="vertical"
+    containerClass="content"
+    :enable-pull-to-refresh="true"
+    v-model:pull-to-refresh-loading="loading"
+    :pull-to-refresh-threshold="50"
+    @pull-to-refresh-start="onPullRefresh"
+  >
+    <p class="hint">Pull down from the top to refresh (simulated 1.5s request)</p>
+    <p v-for="n in 24" :key="n" class="row">List row {{ n }}</p>
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+
+const loading = ref(false);
+
+async function onPullRefresh() {
+  loading.value = true;
+  await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+  loading.value = false;
+}
+</script>
+
+<style lang="scss">
+.pull-demo {
+  width: 100%;
+  height: 280px;
+  color: #333;
+  background-color: #efefef;
+
+  .content {
+    padding: 12px 20px 20px;
+  }
+  .hint {
+    margin: 0 0 12px;
+    font-size: 13px;
+    color: #666;
+  }
+  .row {
+    margin: 0;
+    padding: 8px 0;
+    border-bottom: 1px solid #ddd;
+  }
+}
+</style>
+```
+
+### Custom pull header
+
+```vue
+<template>
+  <ScrollRect
+    scroll="vertical"
+    :enable-pull-to-refresh="true"
+    v-model:pull-to-refresh-loading="loading"
+    @pull-to-refresh-start="onPullRefresh"
+  >
+    <template #pullRefresh="{ state, distance, threshold, loading: isLoading }">
+      <div class="my-pull">
+        <span v-if="isLoading">Refreshing…</span>
+        <span v-else-if="state === 'release'">Release to refresh</span>
+        <span v-else>Pull {{ Math.round(distance) }} / {{ threshold }} px</span>
+      </div>
+    </template>
+    <p v-for="n in 10" :key="n">Item {{ n }}</p>
+  </ScrollRect>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import { ScrollRect } from '@imengyu/vue-scroll-rect';
+
+const loading = ref(false);
+
+async function onPullRefresh() {
+  loading.value = true;
+  await new Promise<void>((r) => setTimeout(r, 800));
+  loading.value = false;
+}
+</script>
+```
+
 ## Scrollbar
 
 ### Scroll bar style

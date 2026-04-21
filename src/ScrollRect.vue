@@ -15,15 +15,48 @@
   >
     <div 
       ref="container" 
-      :class="['scroll-content', scroll, containerClass]"
+      :class="['scroll-content', scroll, containerClass, { 'pull-refresh-enabled': enablePullToRefresh && canScrollY }]"
       :style="{
         maxWidth: maxWidth ? `${maxWidth}px` : undefined,
         maxHeight: maxHeight ? `${maxHeight}px` : undefined,
         ...containerStyle,
       }"
       @scroll="onScroll"
+      @pointerdown="onPullPointerDown"
+      @pointerup="onPullPointerUp"
+      @pointercancel="onPullPointerUp"
+      @lostpointercapture="onPullPointerLostCapture"
     >
-      <slot />
+      <div
+        v-if="enablePullToRefresh && canScrollY"
+        class="pull-refresh-track"
+        :class="{ 'is-transition': pullTrackTransition }"
+        :style="{ height: `${pullTrackHeight}px` }"
+        aria-hidden="true"
+      >
+        <div class="pull-refresh-track-inner">
+          <slot
+            name="pullRefresh"
+            :state="pullVisualState"
+            :distance="pullDistance"
+            :threshold="pullThreshold"
+            :loading="pullToRefreshLoading"
+            :loading-height="pullRefreshLoadingHeightPx"
+          >
+            <div class="pull-refresh-default">
+              <span
+                v-if="pullVisualState === 'loading'"
+                class="pull-refresh-default-spinner"
+                aria-hidden="true"
+              />
+              <span class="pull-refresh-default-text">{{ pullDefaultText }}</span>
+            </div>
+          </slot>
+        </div>
+      </div>
+      <div class="scroll-content-body">
+        <slot />
+      </div>
     </div>
     <slot
       v-if="scrollBarX.show"
@@ -72,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, type PropType, reactive, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount, nextTick, watch, reactive, computed } from "vue";
 import { createMouseDragHandler } from './Composeable/MouseHandler';
 import { useResizeChecker } from "./Composeable/ResizeChecker";
 import { throttle } from "./Composeable/MiniTimeout";
@@ -146,10 +179,22 @@ export interface ScrollRectProps {
    */
   pullToRefreshThreshold?: number;
   /**
-   * Pull to refresh threshold.
-   * @default 50
+   * Pull-to-refresh loading state (supports v-model:pullToRefreshLoading).
+   * @default false
    */
   pullToRefreshLoading?: boolean;
+
+  /**
+   * Height (px) of the pull area while loading.
+   * @default 48
+   */
+  pullRefreshLoadingHeight?: number;
+
+  /**
+   * Maximum pull distance (px) before rubber-band clamp.
+   * @default 120
+   */
+  pullRefreshMaxDistance?: number;
 }
 
 type ScrollSource = 'layout' | 'scroll';
@@ -161,6 +206,11 @@ const props = withDefaults(defineProps<ScrollRectProps>(),  {
   containerClass: '',
   scrollToStartThreshold: 50,
   scrollToEndThreshold: 50,
+  enablePullToRefresh: false,
+  pullToRefreshThreshold: 50,
+  pullToRefreshLoading: false,
+  pullRefreshLoadingHeight: 48,
+  pullRefreshMaxDistance: 120,
 })
 
 const emit = defineEmits<{
@@ -196,6 +246,164 @@ const scrollBarY = reactive({
   sizeRaw: 0,
   pos: 0,
 });
+
+/** 下拉加载（顶部下拉） */
+const pullDistance = ref(0);
+const pullTrackTransition = ref(true);
+const pullActivePointerId = ref<number | null>(null);
+const pullGestureStartY = ref(0);
+
+const pullThreshold = computed(() => props.pullToRefreshThreshold);
+const pullRefreshLoadingHeightPx = computed(() => props.pullRefreshLoadingHeight);
+
+const pullVisualState = computed(() => {
+  if (props.pullToRefreshLoading)
+    return 'loading' as const;
+  if (pullDistance.value <= 0.5)
+    return 'idle' as const;
+  if (pullDistance.value >= pullThreshold.value)
+    return 'release' as const;
+  return 'pulling' as const;
+});
+
+const pullTrackHeight = computed(() => {
+  if (props.pullToRefreshLoading)
+    return pullRefreshLoadingHeightPx.value;
+  return pullDistance.value;
+});
+
+const pullDefaultText = computed(() => {
+  switch (pullVisualState.value) {
+    case 'loading':
+      return '加载中…';
+    case 'release':
+      return '释放加载';
+    case 'pulling':
+      return '下拉加载';
+    default:
+      return '下拉加载';
+  }
+});
+
+function rubberPull(raw: number) {
+  const max = props.pullRefreshMaxDistance;
+  const t = Math.min(Math.max(raw, 0), max * 2);
+  return max * (1 - Math.exp(-t / (max * 0.9)));
+}
+
+function onPullPointerDown(e: PointerEvent) {
+  if (!props.enablePullToRefresh || !canScrollY.value || props.pullToRefreshLoading)
+    return;
+  if (!container.value || container.value.scrollTop > 1)
+    return;
+  if (e.pointerType === 'mouse' && e.button !== 0)
+    return;
+  pullActivePointerId.value = e.pointerId;
+  pullGestureStartY.value = e.clientY;
+  pullTrackTransition.value = false;
+  try {
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  catch {
+    pullActivePointerId.value = null;
+  }
+}
+
+function onPullPointerMove(e: PointerEvent) {
+  if (pullActivePointerId.value === null || e.pointerId !== pullActivePointerId.value)
+    return;
+  if (!props.enablePullToRefresh || !canScrollY.value || props.pullToRefreshLoading)
+    return;
+  if (!container.value)
+    return;
+  if (container.value.scrollTop > 1) {
+    pullDistance.value = 0;
+    endPullGesture(e, true);
+    return;
+  }
+  const dy = e.clientY - pullGestureStartY.value;
+  if (dy <= 0) {
+    pullDistance.value = 0;
+    return;
+  }
+  e.preventDefault();
+  pullDistance.value = rubberPull(dy * 0.55);
+}
+
+function endPullGesture(e: PointerEvent | undefined, doRelease: boolean) {
+  if (pullActivePointerId.value === null)
+    return;
+  const id = pullActivePointerId.value;
+  pullActivePointerId.value = null;
+  pullTrackTransition.value = true;
+  if (doRelease && container.value) {
+    try {
+      container.value.releasePointerCapture(id);
+    }
+    catch {
+      // ignore
+    }
+  }
+}
+
+function onPullPointerUp(e: PointerEvent) {
+  if (pullActivePointerId.value === null || e.pointerId !== pullActivePointerId.value)
+    return;
+  finishPullAfterGesture(e);
+}
+
+function onPullPointerLostCapture(e: PointerEvent) {
+  if (pullActivePointerId.value === null || e.pointerId !== pullActivePointerId.value)
+    return;
+  finishPullAfterGesture(e);
+}
+
+function finishPullAfterGesture(e: PointerEvent) {
+  const wasActive = pullActivePointerId.value !== null;
+  const dist = pullDistance.value;
+  endPullGesture(e, true);
+  if (wasActive && !props.pullToRefreshLoading && dist >= pullThreshold.value)
+    emit('pullToRefreshStart');
+  pullDistance.value = 0;
+}
+
+let pullPointerMoveAttached = false;
+function attachPullPointerMove() {
+  if (pullPointerMoveAttached || !container.value || !props.enablePullToRefresh || !canScrollY.value)
+    return;
+  container.value.addEventListener('pointermove', onPullPointerMove as EventListener, { passive: false });
+  pullPointerMoveAttached = true;
+}
+function detachPullPointerMove() {
+  if (!pullPointerMoveAttached || !container.value)
+    return;
+  container.value.removeEventListener('pointermove', onPullPointerMove as EventListener);
+  pullPointerMoveAttached = false;
+}
+
+watch(
+  () => props.pullToRefreshLoading,
+  (loading, prev) => {
+    if (prev === true && loading === false) {
+      emit('pullToRefreshEnd');
+      pullDistance.value = 0;
+    }
+  },
+);
+
+watch(
+  () => props.enablePullToRefresh && canScrollY.value,
+  (ok) => {
+    if (!ok) {
+      pullDistance.value = 0;
+      pullActivePointerId.value = null;
+      nextTick(() => detachPullPointerMove());
+    }
+    else {
+      nextTick(() => attachPullPointerMove());
+    }
+  },
+);
 
 let lastCalcScrollScrollWidth = 0;
 let lastCalcScrollScrollHeight = 0;
@@ -428,15 +636,42 @@ onMounted(() => {
     startResizeChecker();
     observer = new MutationObserver(() => calcScroll('layout'));
     observer.observe(container.value!, config);
+    attachPullPointerMove();
   });
 });
 onBeforeUnmount(() => {
+  detachPullPointerMove();
   stopResizeChecker();
   if (observer) {
     observer.disconnect();
     observer = null;
   }
 });
+
+export type ScrollRectPullRefreshState = 'idle' | 'pulling' | 'release' | 'loading';
+
+export interface ScrollRectPullRefreshSlotParams {
+  /**
+   * 下拉状态：未拉动 / 拉动中 / 可释放 / 加载中
+   */
+  state: ScrollRectPullRefreshState;
+  /**
+   * 当前下拉距离（像素）
+   */
+  distance: number;
+  /**
+   * 触发加载的阈值（像素），与 `pullToRefreshThreshold` 一致
+   */
+  threshold: number;
+  /**
+   * 是否处于加载中（与 `pullToRefreshLoading` / v-model 一致）
+   */
+  loading: boolean;
+  /**
+   * 加载区域高度（像素），与 `pullRefreshLoadingHeight` 一致
+   */
+  loadingHeight: number;
+}
 
 export interface ScrollRectScrollBarSlotParams {
   scrollValue: {
@@ -516,6 +751,9 @@ defineExpose<ScrollRectInstance>({
   --vue-scroll-rect-scrollbar-thumb-radius: 5px;
   --vue-scroll-rect-scrollbar-thumb-margin: 0px;
   --vue-scroll-rect-scrollbar-size: 8px;
+  --vue-scroll-rect-pull-refresh-text-color: rgba(0, 0, 0, 0.55);
+  --vue-scroll-rect-pull-refresh-font-size: 13px;
+  --vue-scroll-rect-pull-refresh-spinner-color: rgba(0, 0, 0, 0.35);
 }
 
 .vue-scroll-rect {
@@ -550,6 +788,49 @@ defineExpose<ScrollRectInstance>({
     }
     &.vertical {
       overflow-y: scroll;
+    }
+
+    &.pull-refresh-enabled {
+      touch-action: pan-y;
+    }
+
+    .pull-refresh-track {
+      box-sizing: border-box;
+      width: 100%;
+      overflow: hidden;
+
+      &.is-transition {
+        transition: height 0.22s ease;
+      }
+    }
+
+    .pull-refresh-track-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100%;
+      padding: 6px 12px;
+      color: var(--vue-scroll-rect-pull-refresh-text-color);
+      font-size: var(--vue-scroll-rect-pull-refresh-font-size);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .pull-refresh-default {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      line-height: 1.25;
+    }
+
+    .pull-refresh-default-spinner {
+      box-sizing: border-box;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--vue-scroll-rect-pull-refresh-spinner-color);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: vue-scroll-rect-pull-spin 0.75s linear infinite;
     }
   }
 
@@ -614,6 +895,12 @@ defineExpose<ScrollRectInstance>({
         right: var(--vue-scroll-rect-scrollbar-thumb-margin);
       }
     }
+  }
+}
+
+@keyframes vue-scroll-rect-pull-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>
