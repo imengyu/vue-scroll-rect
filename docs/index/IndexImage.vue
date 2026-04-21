@@ -20,7 +20,7 @@ import IndexDemo from './IndexDemo.vue?raw';
   text-align: left;
 
   pre {
-    margin-bottom: 0;
+    margin: 0;
 
     code.hljs {
       width: max-content;

@@ -11,7 +11,7 @@
       width: width? `${width}px` : undefined,
       height: height? `${height}px` : undefined,
     }"
-    @wheel="mouseWheel"
+    @wheel="onMouseWheel"
   >
     <div 
       ref="container" 
@@ -21,7 +21,7 @@
         maxHeight: maxHeight ? `${maxHeight}px` : undefined,
         ...containerStyle,
       }"
-      @scroll="calcScrollBarPosition"
+      @scroll="onScroll"
     >
       <slot />
     </div>
@@ -35,14 +35,14 @@
         ref="scrollBarRefX"
         class="scrollbar horizontal"
         @click="scrollbarClickScrollX"
-        @wheel="mouseWheelBarX"
+        @wheel="onMouseWheelBarX"
       >
         <div
           class="thumb"
           ref="scrollBarThumbRefX"
           :style="{ left: `${scrollBarX.pos}%`, width: `${scrollBarX.size}%` }"
           @mousedown="thumbDrageHandlerX"
-          @wheel="mouseWheelBarX"
+          @wheel="onMouseWheelBarX"
         />
       </div>
     </slot>
@@ -57,14 +57,14 @@
         ref="scrollBarRefY"
         class="scrollbar vertical"
         @click="scrollbarClickScrollY"
-        @wheel="mouseWheelBarY"
+        @wheel="onMouseWheelBarY"
       >
         <div 
           class="thumb"
           ref="scrollBarThumbRefY"
           :style="{ top: `${scrollBarY.pos}%`, height: `${scrollBarY.size}%` }"
           @mousedown="thumbDrageHandlerY"
-          @wheel="mouseWheelBarY"
+          @wheel="onMouseWheelBarY"
         />
       </div>
     </slot>
@@ -77,7 +77,7 @@ import { createMouseDragHandler } from './Composeable/MouseHandler';
 import { useResizeChecker } from "./Composeable/ResizeChecker";
 import { throttle } from "./Composeable/MiniTimeout";
 
-const props = defineProps({	
+export interface ScrollRectProps {
   /**
    * Scroll direction
    * 
@@ -88,86 +88,90 @@ const props = defineProps({
    * 
    * @default both
    */
-  scroll: {
-    type: String as PropType<'both'|'none'|'vertical'|'horizontal'>,
-    default: 'both'
-  },
+  scroll?: 'both'|'none'|'vertical'|'horizontal';
   /**
    * Show scroll bar always, otherwise show scroll bar when mouse over
    * @default false
    */
-  scrollBarAlwaysShow: {
-    type: Boolean,
-    default: false
-  },
+  scrollBarAlwaysShow?: boolean;
   /**
    * Is able to click scroll bar background to set scroll position? (When `scrollBarAlwaysShow` is true)
    * @default true
    */
-  scrollBarBackgroundClickable: {
-    type: Boolean,
-    default: false,
-  },
-  /**
-   * Height of scroll rect
-   */
-  height: {
-    type: Number,
-    default: undefined,
-  },
-  /**
-   * Width of scroll rect
-   */
-  width: {
-    type: Number,
-    default: undefined,
-  },
-  /**
-   * Max height of inner container
-   */
-  maxHeight: {
-    type: Number,
-    default: undefined,
-  },
-  /**
-   * Max width of inner container
-   */
-  maxWidth: {
-    type: Number,
-    default: undefined,
-  },
+  scrollBarBackgroundClickable?: boolean;
   /**
    * CSS class of inner container
    */
-  containerClass: {
-    type: String,
-    default: ''
-  },
+  containerClass?: string;
   /**
    * Container style
    */
-  containerStyle: {
-    type: null,
-  },
+  containerStyle?: Record<string, any>;
+  /**
+   * Width of scroll rect
+   */
+  width?: number;
+  /**
+   * Height of scroll rect
+   */
+  height?: number;
+  /**
+   * Max width of inner container
+   */
+  maxWidth?: number;
+  /**
+   * Max height of inner container
+   */
+  maxHeight?: number;
   /**
    * Specify how many pixels of scroll distance trigger `scrollToStart` event.
    * @default 50
    */
-  scrollToStartThreshold: {
-    type: Number,
-    default: 50,
-  },
+  scrollToStartThreshold?: number;
   /**
    * Specify how many pixels of scroll distance trigger `scrollToEnd` event.
    * @default 50
    */
-  scrollToEndThreshold: {
-    type: Number,
-    default: 50,
-  },
+  scrollToEndThreshold?: number;
+
+  /**
+   * Enable pull to refresh.
+   * @default false
+   */
+  enablePullToRefresh?: boolean;
+
+  /**
+   * Pull to refresh threshold.
+   * @default 50
+   */
+  pullToRefreshThreshold?: number;
+  /**
+   * Pull to refresh threshold.
+   * @default 50
+   */
+  pullToRefreshLoading?: boolean;
+}
+
+type ScrollSource = 'layout' | 'scroll';
+
+const props = withDefaults(defineProps<ScrollRectProps>(),  {	
+  scroll: 'both',
+  scrollBarAlwaysShow: false,
+  scrollBarBackgroundClickable: true,
+  containerClass: '',
+  scrollToStartThreshold: 50,
+  scrollToEndThreshold: 50,
 })
 
-const emit = defineEmits([ 'scroll', 'resized', 'scrollToStart', 'scrollToEnd' ])
+const emit = defineEmits<{
+  (e: 'scroll', scrollLeft: number, scrollTop: number): void;
+  (e: 'resized', scrollWidth: number, scrollHeight: number): void;
+  (e: 'scrollToStart'): void;
+  (e: 'scrollToEnd'): void;
+  (e: 'pullToRefreshStart'): void;
+  (e: 'pullToRefreshEnd'): void;
+  (e: 'update:pullToRefreshLoading', loading: boolean): void;
+}>();
 
 const container = ref<HTMLElement>();
 const scrollrect = ref<HTMLElement>();
@@ -202,7 +206,7 @@ let observer : MutationObserver|null = null;
 // 配置观察选项
 const config = { attributes: true, childList: true };
 
-function calcScrollBarPosition() {
+function calcScrollBarPosition(source: ScrollSource) {
   if (!container.value) 
     return;
   if (scrollBarX.show) {
@@ -222,30 +226,31 @@ function calcScrollBarPosition() {
       scrollBarY.show = false;
   }
 
-  if (props.scroll === 'vertical') {
-    if (props.scrollToStartThreshold) {
-      if (container.value.scrollTop <= props.scrollToStartThreshold)
-        emit('scrollToStart');
+  if (source === 'scroll') {
+    if (props.scroll === 'vertical') {
+      if (props.scrollToStartThreshold) {
+        if (container.value.scrollTop <= props.scrollToStartThreshold)
+          emit('scrollToStart');
+      }
+      if (props.scrollToEndThreshold) {
+        if (container.value.scrollTop >= container.value.scrollHeight - props.scrollToEndThreshold - container.value.offsetHeight)
+          emit('scrollToEnd');
+      }
+    } else if (props.scroll === 'horizontal') {
+      if (props.scrollToStartThreshold) {
+        if (container.value.scrollLeft <= props.scrollToStartThreshold)
+          emit('scrollToStart');
+      }
+      if (props.scrollToEndThreshold) {
+        if (container.value.scrollLeft >= container.value.scrollWidth - props.scrollToEndThreshold - container.value.offsetWidth)
+          emit('scrollToEnd');
+      }
     }
-    if (props.scrollToEndThreshold) {
-      if (container.value.scrollTop >= container.value.scrollHeight - props.scrollToEndThreshold - container.value.offsetHeight)
-        emit('scrollToEnd');
-    }
-  } else if (props.scroll === 'horizontal') {
-    if (props.scrollToStartThreshold) {
-      if (container.value.scrollLeft <= props.scrollToStartThreshold)
-        emit('scrollToStart');
-    }
-    if (props.scrollToEndThreshold) {
-      if (container.value.scrollLeft >= container.value.scrollWidth - props.scrollToEndThreshold - container.value.offsetWidth)
-        emit('scrollToEnd');
-    }
+    emit('scroll', container.value.scrollLeft, container.value.scrollTop);
   }
-
-  emit('scroll', container.value.scrollLeft, container.value.scrollTop);
 }
 
-function calcScroll(force = false) {
+function calcScroll(source: ScrollSource, force = false) {
   
   if (!container.value) 
     return;
@@ -270,7 +275,7 @@ function calcScroll(force = false) {
   scrollBarX.show = _canScrollX;
   scrollBarY.show = _canScrollY;
 
-  calcScrollBarPosition();
+  calcScrollBarPosition(source);
 
   lastCalcScrollWidth = container.value.offsetWidth;
   lastCalcScrollHeight = container.value.offsetHeight
@@ -278,6 +283,10 @@ function calcScroll(force = false) {
   lastCalcScrollScrollHeight = container.value.scrollHeight;
 
   emit('resized', lastCalcScrollScrollWidth, lastCalcScrollScrollHeight);
+}
+
+function onScroll(event: Event) {
+  calcScrollBarPosition('scroll');
 }
 
 const manualWheelScrollSizeX = 140;
@@ -297,7 +306,7 @@ const whellY = throttle((postive: boolean) => {
 }, 20);
 
 //只有横向滚动时，使鼠标可以直接滚动
-function mouseWheel(e: WheelEvent) {
+function onMouseWheel(e: WheelEvent) {
   if (props.scroll == 'horizontal') {
     if (e.deltaMode == 0)
       whellX(e.deltaY > 0);
@@ -306,7 +315,7 @@ function mouseWheel(e: WheelEvent) {
   }
 }
 
-function mouseWheelBarX(e: WheelEvent) {
+function onMouseWheelBarX(e: WheelEvent) {
   if (e.deltaMode == 0) {
     whellX(e.deltaY > 0);
     e.preventDefault();
@@ -314,7 +323,7 @@ function mouseWheelBarX(e: WheelEvent) {
   }
 }
 
-function mouseWheelBarY(e: WheelEvent) {
+function onMouseWheelBarY(e: WheelEvent) {
   if (e.deltaMode == 0) {
     whellY(e.deltaY > 0);
     e.preventDefault();
@@ -409,16 +418,15 @@ const {
   stopResizeChecker,
 } = useResizeChecker(
   container, 
-  () => calcScroll(), 
-  () => calcScroll()
+  () => calcScroll('layout'), 
+  () => calcScroll('layout')
 );
 
 onMounted(() => {
   nextTick(() => {
-    setTimeout(() => calcScroll(true), 200);
-    calcScroll(true);
+    setTimeout(() => calcScroll('layout',true), 200);
     startResizeChecker();
-    observer = new MutationObserver(() => calcScroll());
+    observer = new MutationObserver(() => calcScroll('layout'));
     observer.observe(container.value!, config);
   });
 });
@@ -471,18 +479,18 @@ export interface ScrollRectInstance {
    */
   scrollTo(x: number, y: number): void;
   /**
-   * Scroll to top
+   * Scroll to 0,0
    */
-  scrollToTop() : void;
+  scrollToStart() : void;
   /**
-   * Scroll to bottom
+   * Scroll to container.scrollWidth, container.scrollHeight
    */
-  scrollToBottom() : void;
+  scrollToEnd() : void;
 }
 
 defineExpose<ScrollRectInstance>({
   refreshScrollState() {
-    calcScroll(true);
+    calcScroll('layout', true);
   },
   getScrollContainer() {
     return container.value;
@@ -490,10 +498,10 @@ defineExpose<ScrollRectInstance>({
   scrollTo(x: number, y: number) {
     container.value?.scrollTo(x, y);
   },
-  scrollToTop() {
+  scrollToStart() {
     container.value?.scrollTo(0, 0);
   },
-  scrollToBottom() {
+  scrollToEnd() {
     container.value?.scrollTo(container.value.scrollWidth, container.value.scrollHeight);
   },
 })
