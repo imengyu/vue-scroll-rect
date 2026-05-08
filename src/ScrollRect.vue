@@ -9,8 +9,8 @@
       isPulling ? 'pulling' : '',
     ]"
     :style="{
-      width: width? `${width}px` : undefined,
-      height: height? `${height}px` : undefined,
+      width: width? resoleSize(width) : undefined,
+      height: height? resoleSize(height) : undefined,
     }"
     @wheel="onMouseWheel"
   >
@@ -18,8 +18,8 @@
       ref="container" 
       :class="['scroll-content', scroll, containerClass, { 'pull-refresh-enabled': enablePullToRefresh && canScrollY }]"
       :style="{
-        maxWidth: maxWidth ? `${maxWidth}px` : undefined,
-        maxHeight: maxHeight ? `${maxHeight}px` : undefined,
+        maxWidth: maxWidth ? resoleSize(maxWidth) : undefined,
+        maxHeight: maxHeight ? resoleSize(maxHeight) : undefined,
         ...containerStyle,
       }"
       @scroll="onScroll"
@@ -166,19 +166,19 @@ export interface ScrollRectProps {
   /**
    * Width of scroll rect
    */
-  width?: number;
+  width?: number|string;
   /**
    * Height of scroll rect
    */
-  height?: number;
+  height?: number|string;
   /**
    * Max width of inner container
    */
-  maxWidth?: number;
+  maxWidth?: number|string;
   /**
    * Max height of inner container
    */
-  maxHeight?: number;
+  maxHeight?: number|string;
   /**
    * Specify how many pixels of scroll distance trigger `scrollToStart` event.
    * @default 50
@@ -285,6 +285,16 @@ const scrollBarY = reactive({
   sizeRaw: 0,
   pos: 0,
 });
+
+function resoleSize(size: number|string) {
+  if (typeof size === 'number') {
+    return `${size}px`;
+  } else {
+    if (/^\d+$/.test(size))
+      return `${size}px`;
+    return size;
+  }
+}
 
 /** 用于返回顶部显隐（与 calcScrollBarPosition 同步） */
 const scrollTopSnapshot = ref(0);
